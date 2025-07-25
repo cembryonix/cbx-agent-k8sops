@@ -1,0 +1,16 @@
+{
+  "mcp_servers": {
+    "k8s_mcp": {
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "MY_USER_HOME_DIR/.kube:/home/appuser/.kube:ro",
+        "ghcr.io/alexei-led/k8s-mcp-server:latest"
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcp_servers": {
+    "k8s_mcp": {
+      "url": "http://MCP_SERVER_IP:8080/mcp/",
+      "transport": "streamable_http"
+    }
+  }
+}
