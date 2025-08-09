@@ -1,12 +1,12 @@
+# chainlit_handlers/settings_handler.py
 
 import chainlit as cl
 from typing import Dict, Any
-import logging
 from ..models import initialize_model, get_provider_config
 from ..agent import setup_agent
 
-
-logger = logging.getLogger(__name__)
+from ..utils import get_logger
+logger = get_logger(__name__)
 
 
 async def handle_settings_update(settings: Dict[str, Any], default_config) -> None:
@@ -18,10 +18,6 @@ async def handle_settings_update(settings: Dict[str, Any], default_config) -> No
 
         logger.info(f"Settings update requested: {settings}")
         logger.debug(f"Current model: {current_model}, temp: {current_temp}")
-
-        # Update settings in user session
-        cl.user_session.set("model", settings["model"])
-        cl.user_session.set("temperature", settings["temperature"])
 
         # Check if agent reinitialization is needed
         if (settings["model"] != current_model or

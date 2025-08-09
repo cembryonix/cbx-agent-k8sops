@@ -1,3 +1,4 @@
+# models/supported_models
 
 SUPPORTED_MODELS = {
     "global_config": {
@@ -15,11 +16,13 @@ SUPPORTED_MODELS = {
                 "organization": None
             },
             "models": {
+
+                ##### GPT-4+
                 "gpt-4.1-nano": {
-                  "display_name": "GPT-4.1 Nano",
-                  "capabilities": ["chat", "tool_calling"],
-                  "context_window": 1000000,
-                  "config_overrides": {}
+                    "display_name": "GPT-4.1 Nano",
+                    "capabilities": ["chat", "tool_calling"],
+                    "context_window": 1000000,
+                    "config_overrides": {}
                 },
                 "gpt-4o-mini": {
                     "display_name": "GPT-4o Mini",
@@ -32,6 +35,48 @@ SUPPORTED_MODELS = {
                     "capabilities": ["chat", "tool_calling", "vision"],
                     "context_window": 128000,
                     "config_overrides": {"temperature": 0.1}
+                },
+                ##### GPT-5+
+                "gpt-5-nano": {
+                    "display_name": "GPT-5 Nano",
+                    "capabilities": ["chat", "tool_calling", "vision", "structured_output", "parallel_tools", "reasoning_params"],
+                    "context_window": 272_000,
+                    "config_overrides": {
+                        "reasoning_effort": "minimal",
+                        "verbosity": "low",
+                    }
+                },
+                "gpt-5-mini": {
+                    "display_name": "GPT-5 Mini",
+                    "capabilities": ["chat", "tool_calling", "vision", "structured_output", "parallel_tools", "reasoning_params"],
+                    # If you need an explicit number, treat this as the same tier unless your usage depends on exact limits.
+                    "context_window": 272_000,
+                    "config_overrides": {
+                        "streaming": False,  # disabled until - TODO: add config flag for Organization verification status
+                        "reasoning_effort": "minimal",
+                        "verbosity": "low",
+                    }
+                },
+                "gpt-5": {
+                    "display_name": "GPT-5",
+                    "capabilities": ["chat", "tool_calling", "vision", "structured_output", "parallel_tools", "reasoning_params"],
+                    # Context window per official docs / Azure table; max output typically listed separately.
+                    "context_window": 272_000,
+                    "config_overrides": {
+                        "streaming": False,  # TODO: add config flag for Organization verification status
+                        # Available knobs (use as needed):
+                        "reasoning_effort": "minimal",  # or "medium"/"high"
+                        "verbosity": "low",             # or "medium"/"high"
+                    }
+                },
+                "gpt-5-chat-latest": {
+                    "display_name": "GPT-5 Chat (non-reasoning router)",
+                    "capabilities": ["chat", "tool_calling", "vision", "structured_output", "parallel_tools"],
+                    "context_window": 400_000,
+                    "config_overrides": {
+                        "streaming": False, # TODO: add config flag for Organization verification status
+                        "verbosity": "low",
+                    }
                 }
             }
         },

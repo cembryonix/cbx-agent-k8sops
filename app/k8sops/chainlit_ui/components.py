@@ -1,3 +1,4 @@
+# chainlit_ui/components.py
 
 import chainlit as cl
 from chainlit.input_widget import Select, Slider

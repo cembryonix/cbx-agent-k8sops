@@ -55,8 +55,13 @@ awk -v local_ip="$MY_HOST_IP" '{gsub(/MCP_SERVER_IP/, local_ip)} 1' \
 
 export K8SOPS_CONFIG_DIR="${conf_dir}"
 
+# optional on MacOS but required when running on Linux
+UID=$(id -u)
+GID=$(id -g)
+
 # not used in compose yet (hardcoded in docker-compose)
 PORT=8000
+
 
 if docker compose up -d; then
   echo "✅ K8SOps agent and MCP server started."

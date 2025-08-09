@@ -7,9 +7,10 @@
         "run",
         "-i",
         "--rm",
-        "-v",
-        "MY_USER_HOME_DIR/.kube:/home/appuser/.kube:ro",
-        "ghcr.io/alexei-led/k8s-mcp-server:latest"
+        "-e", "CBX_CONFIG_NAME=stdio",
+        "-v", "MY_USER_HOME_DIR/.kube:/home/appuser/.kube:ro",
+        "-v", "MY_USER_HOME_DIR/.config/argocd:/home/appuser/.config/argocd:ro",
+        "ghcr.io/cembryonix/cbx-mcp-server-k8s:v0.1.0"
       ]
     }
   }
