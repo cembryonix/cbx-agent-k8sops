@@ -1,15 +1,13 @@
+# chainlit_handlers/message_handler.py
 
 # Main logic of the Interaction
 
 import json
-
 import chainlit as cl
 from langchain_core.messages import AIMessage, HumanMessage
 
 from ..utils import get_logger
-
 logger = get_logger(__name__)
-
 
 def format_tool_call(name, args):
     if not args:
