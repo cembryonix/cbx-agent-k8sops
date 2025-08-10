@@ -1,10 +1,10 @@
 services:
   cbx-agent-k8sops:
-    image: ghcr.io/cembryonix/cbx-agent-k8sops:v0.1.1
+    image: "${APP_IMAGE_NAME}"
     container_name: cbx-agent-k8sops
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${APP_PORT}:8000"
     environment:
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -15,16 +15,14 @@ services:
       - cbx-mcp-server-k8s
 
   cbx-mcp-server-k8s:
-    image: ghcr.io/cembryonix/cbx-mcp-server-k8s:v0.1.1
+    image: "${MCP_IMAGE_NAME}"
     container_name: cbx-mcp-server-k8s
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${MCP_PORT}:8080"
     volumes:
       - ~/.kube:/home/appuser/.kube:ro
       - ~/.config/argocd:/home/appuser/.config/argocd:ro
     environment:
       - HOME=/home/appuser
-    user: "${UID}:${GID}"
-
-
+    user: "${DOCKER_UID}:${DOCKER_GID}"

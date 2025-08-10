@@ -1,6 +1,7 @@
 # This repo specic
 temp/
 .DS_Store
+runtime_venv/
 
 
 # Byte-compiled / optimized / DLL files
