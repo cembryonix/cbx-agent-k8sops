@@ -21,7 +21,7 @@ echo "Loading configuration from: $config_file"
 source "$config_file"
 
 # Validate required variables are set
-required_vars=("gh_username" "docker_image_name" "dev_tag" "release_tag" "release_github_org")
+required_vars=("gh_username" "docker_image_name" "dev_tag" "release_tag" "gh_repo_owner")
 for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
         echo "Error: Required variable '$var' is not set in $config_file"
@@ -99,7 +99,7 @@ if [ "$publish_build" = true ]; then
     docker buildx build --no-cache \
         --platform linux/amd64,linux/arm64 \
         -f ${script_dir}/Dockerfile \
-        -t "ghcr.io/${release_github_org}/${docker_image_name}:${release_tag}" \
+        -t "ghcr.io/${gh_repo_owner}/${docker_image_name}:${release_tag}" \
         --push \
         ${root_dir}
 else

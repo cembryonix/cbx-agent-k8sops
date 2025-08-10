@@ -2,28 +2,29 @@
 
 import chainlit as cl
 from typing import Dict, Any
-from ..models import initialize_model, get_provider_config
-from ..agent import setup_agent
+
+from .session_handler import reinitialize_model_and_agent
 
 from ..utils import get_logger
+
 logger = get_logger(__name__)
 
 
 async def handle_settings_update(settings: Dict[str, Any], default_config) -> None:
+    """Handle settings updates - reinitialize agent if needed."""
+
+    if not validate_settings(settings):
+        await cl.Message(content="❌ Invalid settings provided").send()
+        return
 
     try:
-        # Get current settings
-        current_model = cl.user_session.get("model")
-        current_temp = cl.user_session.get("temperature")
-
+        current_settings = get_current_settings()
         logger.info(f"Settings update requested: {settings}")
-        logger.debug(f"Current model: {current_model}, temp: {current_temp}")
+        logger.debug(f"Current settings: {current_settings}")
 
         # Check if agent reinitialization is needed
-        if (settings["model"] != current_model or
-                settings["temperature"] != current_temp):
-
-            await _reinitialize_agent_with_new_settings(settings, default_config)
+        if _settings_changed(settings, current_settings):
+            await reinitialize_model_and_agent(settings)
         else:
             await cl.Message(content="✅ Settings updated!").send()
 
@@ -33,56 +34,26 @@ async def handle_settings_update(settings: Dict[str, Any], default_config) -> No
         raise
 
 
-async def _reinitialize_agent_with_new_settings(settings: Dict[str, Any], default_config) -> None:
-
-    await cl.Message(content="🔄 Updating agent configuration...").send()
-
-    # Store initial settings in user session
-    selected_model = settings['model']
-    llm_provider, llm_model_name = selected_model.split("/", 1)
-
-    cl.user_session.set('llm_provider', llm_provider)
-    cl.user_session.set('llm_model_name', llm_model_name)
-    cl.user_session.set("temperature", settings["temperature"])
-
-    llm_config = get_provider_config(llm_provider,llm_model_name)
-
-    # Init LLM
-    try:
-        model = await initialize_model(llm_provider, llm_model_name, llm_config)
-        cl.user_session.set("model", model)
-        await cl.Message(content=f"✅ LLM Model \"{llm_model_name}\" is initialized.").send()
-    except Exception as e:
-        await cl.Message(content=f"❌ Failed to initialize LLM Model: {str(e)}").send()
-
-    model = cl.user_session.get("model")
-    mcp_tools = cl.user_session.get("mcp_tools")
-
-    try:
-        agent = await setup_agent(model, mcp_tools)
-        cl.user_session.set("agent", agent)
-        await cl.Message(
-            content=f"✅ Agent updated with {settings['model']} (temp: {settings['temperature']})"
-        ).send()
-
-        logger.info(f"Agent successfully reinitialized with settings: {settings}")
-
-    except Exception as e:
-        logger.error(f"Agent reinitialization failed: {e}")
-        await cl.Message(content=f"❌ Failed to update agent: {str(e)}").send()
-        raise
+def _settings_changed(new_settings: Dict[str, Any], current_settings: Dict[str, Any]) -> bool:
+    """Check if settings have changed in a way that requires reinitialization."""
+    return (new_settings["model"] != current_settings["model"] or
+            new_settings["temperature"] != current_settings["temperature"])
 
 
 def get_current_settings() -> Dict[str, Any]:
+    """Get current settings from user session."""
+    llm_provider = cl.user_session.get('llm_provider', '')
+    llm_model_name = cl.user_session.get('llm_model_name', '')
+    current_model = f"{llm_provider}/{llm_model_name}" if llm_provider and llm_model_name else ""
 
     return {
-        "model": cl.user_session.get("model"),
-        "temperature": cl.user_session.get("temperature")
+        "model": current_model,
+        "temperature": cl.user_session.get("temperature", 0.1)
     }
 
 
 def validate_settings(settings: Dict[str, Any]) -> bool:
-
+    """Validate settings before applying them."""
     required_keys = ["model", "temperature"]
 
     # Check required keys exist
@@ -100,9 +71,13 @@ def validate_settings(settings: Dict[str, Any]) -> bool:
         logger.warning(f"Invalid temperature value: {settings['temperature']}")
         return False
 
-    # Validate model (you can extend this based on your supported models)
+    # Validate model format
     if not isinstance(settings["model"], str) or not settings["model"].strip():
         logger.warning(f"Invalid model value: {settings['model']}")
+        return False
+
+    if "/" not in settings["model"]:
+        logger.warning(f"Model must be in 'provider/model' format: {settings['model']}")
         return False
 
     return True
