@@ -1,4 +1,4 @@
-default_model: openai/gpt-4.1-nano
+default_model: openai/gpt-5-nano
 temperature: 0.7
 providers:
  ollama:

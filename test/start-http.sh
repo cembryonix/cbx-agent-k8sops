@@ -2,15 +2,6 @@
 
 set -e
 
-#get_ip() {
-#    if command -v ip >/dev/null 2>&1; then
-#        # Linux with ip command
-#        ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}'
-#    else
-#        # macOS or Linux with ifconfig
-#        ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | head -1 | awk '{print $2}' | sed 's/addr://'
-#    fi
-#}
 get_local_ip() {
     local ip
 

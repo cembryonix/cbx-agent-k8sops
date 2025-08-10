@@ -1,9 +1,9 @@
+# config/configuration.py
 
 import os
 import json
 import yaml
 
-APP_NAME = 'k8sops'
 
 def load_configs(config_dir):
 
