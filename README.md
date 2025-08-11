@@ -11,10 +11,16 @@ diagnose and fix problems in Kubernetes clusters.
 ```bash
 cd quickstart/docker-compose
 cp .env.example .env
-# edit .env to add API keys ( or at least OpenAI's )
 
-# wrapper to render MCP server config
-./start-compose-up.sh
+# Edit .env 
+# 1. to add API keys ( currently only OpenAI's will be used)
+# 2. Optionally uncomment and change config directories for kubectl and argocd CLIs
+
+# wrapper for "docker compose" to provide env vars for rendering docker-compose.yml
+./run-compose.sh up
+
+# to stop 
+./run-compose.sh down
 
 
 ```
