@@ -58,7 +58,7 @@ setup_environment() {
     fi
 
     # Export application configuration
-    export K8SOPS_CONFIG_DIR="${conf_dir}"
+    export CBX_K8SOPS_CONFIG_DIR="${conf_dir}"
     export APP_IMAGE_NAME="ghcr.io/cembryonix/cbx-agent-k8sops:v0.1.1"
     export MCP_IMAGE_NAME="ghcr.io/cembryonix/cbx-mcp-server-k8s:v0.1.1"
     export APP_PORT=8000
@@ -68,6 +68,11 @@ setup_environment() {
     export DOCKER_UID=$(id -u)
     export DOCKER_GID=$(id -g)
 
+    # Set optional configuration directories with defaults for CLIs used by MCP server
+    # These can be overridden in .env file
+    export CBX_MCP_KUBECONFIG_DIR="${CBX_MCP_KUBECONFIG_DIR:-${HOME}/.kube}"
+    export CBX_MCP_ARGOCD_CONFIG_DIR="${CBX_MCP_ARGOCD_CONFIG_DIR:-${HOME}/.config/argocd}"
+
     echo "Configuration:"
     echo "  APP_IMAGE_NAME: $APP_IMAGE_NAME"
     echo "  MCP_IMAGE_NAME: $MCP_IMAGE_NAME"
@@ -76,6 +81,8 @@ setup_environment() {
     echo "  CONFIG_DIR: $K8SOPS_CONFIG_DIR"
     echo "  DOCKER_UID: $DOCKER_UID"
     echo "  DOCKER_GID: $DOCKER_GID"
+    echo "  MCP_KUBECONFIG_DIR: $CBX_MCP_KUBECONFIG_DIR"
+    echo "  MCP_ARGOCD_CONFIG_DIR: $CBX_MCP_ARGOCD_CONFIG_DIR"
 }
 
 start_services() {

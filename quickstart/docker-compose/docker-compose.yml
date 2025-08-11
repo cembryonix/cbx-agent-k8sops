@@ -10,7 +10,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
-      - ${K8SOPS_CONFIG_DIR:-~/.k8sops}:/root/.k8sops
+      - ${CBX_K8SOPS_CONFIG_DIR:-~/.k8sops}:/root/.k8sops
     depends_on:
       - cbx-mcp-server-k8s
 
@@ -21,8 +21,8 @@ services:
     ports:
       - "${MCP_PORT}:8080"
     volumes:
-      - ~/.kube:/home/appuser/.kube:ro
-      - ~/.config/argocd:/home/appuser/.config/argocd:ro
+      - ${CBX_MCP_KUBECONFIG_DIR}:/home/appuser/.kube:ro
+      - ${CBX_MCP_ARGOCD_CONFIG_DIR}:/home/appuser/.config/argocd:ro
     environment:
       - HOME=/home/appuser
     user: "${DOCKER_UID}:${DOCKER_GID}"
