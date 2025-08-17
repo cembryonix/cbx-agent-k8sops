@@ -1,15 +1,16 @@
 # CBX Agent: K8SOps ![status](https://img.shields.io/badge/status-early--development-orange)
 
+**An AI companion for Kubernetes operations and troubleshooting.** <br>
+Part of the "Cembryonix Project" collection.
+
+Transform your cluster management from command-line tasks to natural conversations.
+
 > [!IMPORTANT]
 > **STATUS: Early Development**
 >
 > Currently, the project provides only basic functionality.  
 > Immediate focus of development is on optimizing choice of LLMs, prompts, deployment methods, and documentation.
 
-**An AI companion for Kubernetes operations and troubleshooting.**
-Part of the "Cembryonix Project" collection.
-
-Transform your cluster management from command-line tasks to natural conversations.
 
 ## What it does
 
@@ -18,7 +19,9 @@ Simply describe what you need and it handles the kubectl, helm, and ArgoCD comma
 From diagnosing pod failures to scaling deployments, it takes care of the command-line work 
 while you focus on the bigger picture.
 
-## Prerequisites
+## Quick Start ( Docker Compose)
+
+### Prerequisites
 
 **Required:**
 - Docker with Compose support (use `docker compose` or `docker-compose`)
@@ -48,8 +51,7 @@ while you focus on the bigger picture.
 - CLI tools (kubectl, argocd) are validated at runtime - broken tools won't be available in the agent
 - All configuration directories are mounted read-only for security
 
-
-## Quick Start
+### Steps
 
 1. **Get the code and navigate to quickstart:**
    ```bash
