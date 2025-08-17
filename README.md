@@ -1,4 +1,10 @@
-# CBX Agent: K8SOps
+# CBX Agent: K8SOps ![status](https://img.shields.io/badge/status-early--development-orange)
+
+> [!IMPORTANT]
+> **STATUS: Early Development**
+>
+> Currently, the project provides only basic functionality.  
+> Immediate focus of development is on optimizing choice of LLMs, prompts, deployment methods, and documentation.
 
 **An AI companion for Kubernetes operations and troubleshooting.**
 Part of the "Cembryonix Project" collection.
