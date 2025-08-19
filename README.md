@@ -1,4 +1,4 @@
-# CBX Agent: K8SOps ![status](https://img.shields.io/badge/status-early--development-orange)
+# CBX Agent: K8SOps ![status](https://img.shields.io/badge/version-0.1.0--alpha-orange)
 
 **An AI companion for Kubernetes operations and troubleshooting.** <br>
 Part of the "Cembryonix Project" collection.
@@ -6,10 +6,14 @@ Part of the "Cembryonix Project" collection.
 Transform your cluster management from command-line tasks to natural conversations.
 
 > [!IMPORTANT]
-> **STATUS: Early Development**
+> **Early Development Release**
 >
-> Currently, the project provides only basic functionality.  
-> Immediate focus of development is on optimizing choice of LLMs, prompts, deployment methods, and documentation.
+> This is an initial release with basic functionality. We're actively working on:
+> - LLM model optimization and prompt engineering
+> - Enhanced deployment options
+> - Comprehensive documentation
+> 
+> Expect frequent updates and potential breaking changes.
 
 
 ## What it does
@@ -105,3 +109,7 @@ You'll see every command it executes.
 **Development:**
 - [Local Development](docs/development.md) - Setting up your development environment
 
+
+**Roadmap**
+
+See our [Roadmap](docs/roadmap.md) for planned features and timeline.
