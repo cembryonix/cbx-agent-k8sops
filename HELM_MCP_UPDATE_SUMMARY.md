@@ -7,7 +7,11 @@ Updated the Helm chart to include optional MCP server deployment alongside the C
 
 ### 1. **values.yaml Updates**
 - Added `mcp_included: true` flag (default: true)
-- Added `mcpServer` section with complete configuration:
+- Restructured configuration with consistent organization:
+  - `agent` section: All agent-related configuration
+  - `mcpServer` section: All MCP server-related configuration
+  - Global settings at root level
+- MCP Server configuration includes:
   - Image: `ghcr.io/cembryonix/cbx-mcp-server-k8s:v0.1.1`
   - Service: ClusterIP on port 8080
   - Ingress: `cbx-mcp-k8s.yourdomain.com/mcp/` with nginx class
@@ -22,8 +26,10 @@ Updated the Helm chart to include optional MCP server deployment alongside the C
 - `templates/mcp-server-configmap.yaml` - MCP server configuration
 
 ### 3. **Updated Template Files**
-- `templates/configmap.yaml` - Combined agent config and MCP config
-- `templates/deployment.yaml` - Updated volume mounts for single ConfigMap
+- `templates/configmap.yaml` - Combined agent config and MCP config, updated for new structure
+- `templates/deployment.yaml` - Updated volume mounts and references for new structure
+- `templates/service.yaml` - Updated references for new structure
+- `templates/ingress.yaml` - Updated references for new structure
 - `templates/configmap-mcp.yaml` - Deleted (merged into main ConfigMap)
 
 ### 4. **Key Features**

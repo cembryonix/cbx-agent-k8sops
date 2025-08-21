@@ -1,59 +1,68 @@
 # values.yaml
-replicaCount: 1
 
 # MCP Server inclusion flag
 mcp_included: true
 
-image:
-  repository: ghcr.io/vkuusk/cbx-agent-k8sops
-  tag: "v0.1.0"
-  pullPolicy: IfNotPresent
+# Agent configuration
+agent:
+  replicaCount: 1
+  
+  image:
+    repository: ghcr.io/vkuusk/cbx-agent-k8sops
+    tag: "v0.1.0"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+    host: cbx-agent-k8sops.yourdomain.com  # Change this to your domain
+    path: /
+    pathType: Prefix
+  
+  # Secret references - these secrets must exist before deployment
+  secretReferences:
+    openaiApiKey:
+      secretName: "cbx-agent-k8sops-openai-key"
+      secretKey: "api-key"
+      namespace: "cbx-agents"
+    anthropicApiKey:
+      secretName: "cbx-agent-k8sops-anthropic-key"
+      secretKey: "api-key"
+      namespace: "cbx-agents"
+  
+  # Configuration files for .k8sops directory
+  config:
+    configYaml: |
+      default_model: openai/gpt-4.1-nano
+      temperature: 0.1
+      providers:
+        ollama:
+          base_url: http://localhost:11434
 
-# Note: Both images are public on GHCR, no image pull secrets needed
-
-service:
-  type: ClusterIP
-  port: 8000
-  targetPort: 8000
-
-ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-  host: cbx-agent-k8sops.yourdomain.com  # Change this to your domain
-  path: /
-  pathType: Prefix
-
-# Secret references - these secrets must exist before deployment
-secretReferences:
-  openaiApiKey:
-    secretName: "cbx-agent-k8sops-openai-key"
-    secretKey: "api-key"
-    namespace: "cbx-agents"
-  anthropicApiKey:
-    secretName: "cbx-agent-k8sops-anthropic-key"
-    secretKey: "api-key"
-    namespace: "cbx-agents"
-
-# Configuration files for .k8sops directory
-config:
-  configYaml: |
-    default_model: openai/gpt-4.1-nano
-    temperature: 0.1
-    providers:
-      ollama:
-        base_url: http://localhost:11434
-
-  mcpConfigJson: |
-    {
-      "mcp_servers": {
-        "k8s_mcp": {
-          "url": "http://cbx-agent-k8sops-mcp-server:8080/mcp/",
-          "transport": "streamable_http"
+    mcpConfigJson: |
+      {
+        "mcp_servers": {
+          "k8s_mcp": {
+            "url": "http://cbx-agent-k8sops-mcp-server:8080/mcp/",
+            "transport": "streamable_http"
+          }
         }
       }
-    }
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
 
 # MCP Server configuration
 mcpServer:
@@ -111,16 +120,9 @@ mcpServer:
       cpu: 500m
       memory: 512Mi
 
-# Note: Both images are public on GHCR, no credentials needed
-
-resources:
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-  requests:
-    cpu: 500m
-    memory: 512Mi
-
+# Global settings
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Note: Both images are public on GHCR, no credentials needed

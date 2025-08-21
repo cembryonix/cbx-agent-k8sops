@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "cbx-agent-k8sops.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.agent.replicaCount }}
   selector:
     matchLabels:
       {{- include "cbx-agent-k8sops.selectorLabels" . | nindent 6 }}
@@ -17,11 +17,11 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
+          imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.targetPort }}
+              containerPort: {{ .Values.agent.service.targetPort }}
               protocol: TCP
           env:
               - name: PYTHONPATH
@@ -29,15 +29,15 @@ spec:
               - name: OPENAI_API_KEY
                 valueFrom:
                   secretKeyRef:
-                    name: {{ .Values.secretReferences.openaiApiKey.secretName }}
-                    key: {{ .Values.secretReferences.openaiApiKey.secretKey }}
+                    name: {{ .Values.agent.secretReferences.openaiApiKey.secretName }}
+                    key: {{ .Values.agent.secretReferences.openaiApiKey.secretKey }}
               - name: ANTHROPIC_API_KEY
                 valueFrom:
                   secretKeyRef:
-                    name: {{ .Values.secretReferences.anthropicApiKey.secretName }}
-                    key: {{ .Values.secretReferences.anthropicApiKey.secretKey }}
+                    name: {{ .Values.agent.secretReferences.anthropicApiKey.secretName }}
+                    key: {{ .Values.agent.secretReferences.anthropicApiKey.secretKey }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.agent.resources | nindent 12 }}
           volumeMounts:
             - name: k8sops-config
               mountPath: /root/.k8sops/config.yaml

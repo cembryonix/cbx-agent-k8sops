@@ -7,7 +7,7 @@ metadata:
     {{- include "cbx-agent-k8sops.labels" . | nindent 4 }}
 data:
   config.yaml: |
-{{ .Values.config.configYaml | nindent 4 }}
+{{ .Values.agent.config.configYaml | nindent 4 }}
   mcp_config.json: |
 {{- if .Values.mcp_included }}
     {
@@ -19,5 +19,5 @@ data:
       }
     }
 {{- else }}
-{{ .Values.config.mcpConfigJson | nindent 4 }}
+{{ .Values.agent.config.mcpConfigJson | nindent 4 }}
 {{- end }}
