@@ -1,0 +1,126 @@
+# values.yaml
+replicaCount: 1
+
+# MCP Server inclusion flag
+mcp_included: true
+
+image:
+  repository: ghcr.io/vkuusk/cbx-agent-k8sops
+  tag: "v0.1.0"
+  pullPolicy: IfNotPresent
+
+# Note: Both images are public on GHCR, no image pull secrets needed
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  host: cbx-agent-k8sops.yourdomain.com  # Change this to your domain
+  path: /
+  pathType: Prefix
+
+# Secret references - these secrets must exist before deployment
+secretReferences:
+  openaiApiKey:
+    secretName: "cbx-agent-k8sops-openai-key"
+    secretKey: "api-key"
+    namespace: "cbx-agents"
+  anthropicApiKey:
+    secretName: "cbx-agent-k8sops-anthropic-key"
+    secretKey: "api-key"
+    namespace: "cbx-agents"
+
+# Configuration files for .k8sops directory
+config:
+  configYaml: |
+    default_model: openai/gpt-4.1-nano
+    temperature: 0.1
+    providers:
+      ollama:
+        base_url: http://localhost:11434
+
+  mcpConfigJson: |
+    {
+      "mcp_servers": {
+        "k8s_mcp": {
+          "url": "http://cbx-agent-k8sops-mcp-server:8080/mcp/",
+          "transport": "streamable_http"
+        }
+      }
+    }
+
+# MCP Server configuration
+mcpServer:
+  image:
+    repository: ghcr.io/cembryonix/cbx-mcp-server-k8s
+    tag: "v0.1.1"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /mcp/
+    host: cbx-mcp-k8s.yourdomain.com  # Change this to your domain
+    path: /mcp/
+    pathType: Prefix
+  
+  # Secret references for MCP server - these secrets must exist before deployment
+  secretReferences:
+    kubeconfig:
+      secretName: "cbx-mcp-k8s-kubeconfig"
+      secretKey: "kubeconfig"
+    argocdConfig:
+      secretName: "cbx-mcp-k8s-argocd-config"
+      secretKey: "config"  # This will contain the argocd config file
+  
+  # MCP Server configuration
+  config: |
+    # MCP server run() params
+    server:
+      server_name: "cbx-mcp-k8s-server"
+      transport_type: "http"
+      host: "0.0.0.0"
+      port: 8080
+      log_level: "INFO"
+
+    command:
+      default_timeout: 120
+      max_output_size: 100000
+
+    security:
+      security_config_path: None   # use DEFAULTS if None
+      security_mode: "strict" # strict or permissive
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Note: Both images are public on GHCR, no credentials needed
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

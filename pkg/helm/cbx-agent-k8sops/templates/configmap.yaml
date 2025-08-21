@@ -1,0 +1,23 @@
+# templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cbx-agent-k8sops.fullname" . }}-config
+  labels:
+    {{- include "cbx-agent-k8sops.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+{{ .Values.config.configYaml | nindent 4 }}
+  mcp_config.json: |
+{{- if .Values.mcp_included }}
+    {
+      "mcp_servers": {
+        "k8s_mcp": {
+          "url": "http://{{ include "cbx-agent-k8sops.fullname" . }}-mcp-server:8080/mcp/",
+          "transport": "streamable_http"
+        }
+      }
+    }
+{{- else }}
+{{ .Values.config.mcpConfigJson | nindent 4 }}
+{{- end }}
