@@ -64,61 +64,13 @@ agent:
       cpu: 500m
       memory: 512Mi
 
-# MCP Server configuration
-mcpServer:
-  image:
-    repository: ghcr.io/cembryonix/cbx-mcp-server-k8s
-    tag: "v0.1.1"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 8080
-    targetPort: 8080
-  
+# MCP Server dependency configuration
+# This section configures the MCP server when deployed as a dependency
+cbx-mcp-server-k8s:
+  # Override MCP server values here if needed
+  # Most values will use defaults from the MCP server chart
   ingress:
-    enabled: true
-    className: nginx
-    annotations:
-      nginx.ingress.kubernetes.io/rewrite-target: /mcp/
     host: cbx-mcp-k8s.yourdomain.com  # Change this to your domain
-    path: /mcp/
-    pathType: Prefix
-  
-  # Secret references for MCP server - these secrets must exist before deployment
-  secretReferences:
-    kubeconfig:
-      secretName: "cbx-mcp-k8s-kubeconfig"
-      secretKey: "kubeconfig"
-    argocdConfig:
-      secretName: "cbx-mcp-k8s-argocd-config"
-      secretKey: "config"  # This will contain the argocd config file
-  
-  # MCP Server configuration
-  config: |
-    # MCP server run() params
-    server:
-      server_name: "cbx-mcp-k8s-server"
-      transport_type: "http"
-      host: "0.0.0.0"
-      port: 8080
-      log_level: "INFO"
-
-    command:
-      default_timeout: 120
-      max_output_size: 100000
-
-    security:
-      security_config_path: None   # use DEFAULTS if None
-      security_mode: "strict" # strict or permissive
-  
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 500m
-      memory: 512Mi
 
 # Global settings
 nodeSelector: {}

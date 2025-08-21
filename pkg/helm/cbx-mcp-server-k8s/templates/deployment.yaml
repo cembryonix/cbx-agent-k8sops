@@ -1,31 +1,27 @@
-# templates/mcp-server-deployment.yaml
-{{- if .Values.mcp_included }}
+# templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "cbx-agent-k8sops.fullname" . }}-mcp-server
+  name: {{ include "cbx-mcp-server-k8s.fullname" . }}
   labels:
-    {{- include "cbx-agent-k8sops.labels" . | nindent 4 }}
-    app.kubernetes.io/component: mcp-server
+    {{- include "cbx-mcp-server-k8s.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "cbx-agent-k8sops.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: mcp-server
+      {{- include "cbx-mcp-server-k8s.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "cbx-agent-k8sops.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: mcp-server
+        {{- include "cbx-mcp-server-k8s.selectorLabels" . | nindent 8 }}
     spec:
       containers:
         - name: mcp-server
-          image: "{{ .Values.mcpServer.image.repository }}:{{ .Values.mcpServer.image.tag }}"
-          imagePullPolicy: {{ .Values.mcpServer.image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.mcpServer.service.targetPort }}
+              containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
           env:
             - name: HOME
@@ -33,7 +29,7 @@ spec:
             - name: CBX_CONFIG_NAME
               value: "http"
           resources:
-            {{- toYaml .Values.mcpServer.resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: mcp-config
               mountPath: /home/appuser/app_configs/mcp-config.yaml
@@ -49,13 +45,13 @@ spec:
       volumes:
         - name: mcp-config
           configMap:
-            name: {{ include "cbx-agent-k8sops.fullname" . }}-mcp-config
+            name: {{ include "cbx-mcp-server-k8s.fullname" . }}-config
         - name: kubeconfig
           secret:
-            secretName: {{ .Values.mcpServer.secretReferences.kubeconfig.secretName }}
+            secretName: {{ .Values.secretReferences.kubeconfig.secretName }}
         - name: argocd-config
           secret:
-            secretName: {{ .Values.mcpServer.secretReferences.argocdConfig.secretName }}
+            secretName: {{ .Values.secretReferences.argocdConfig.secretName }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -68,4 +64,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-{{- end }} 

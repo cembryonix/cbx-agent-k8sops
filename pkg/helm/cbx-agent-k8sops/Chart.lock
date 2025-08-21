@@ -1,0 +1,6 @@
+dependencies:
+- name: cbx-mcp-server-k8s
+  repository: file://../cbx-mcp-server-k8s
+  version: 0.1.0
+digest: sha256:bcadecda9610415baf17fdc4a615dfd72fa375edcf78e909290dcee7a534945d
+generated: "2025-08-20T23:12:57.350643-07:00"

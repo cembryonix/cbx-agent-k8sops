@@ -13,7 +13,7 @@ data:
     {
       "mcp_servers": {
         "k8s_mcp": {
-          "url": "http://{{ include "cbx-agent-k8sops.fullname" . }}-mcp-server:8080/mcp/",
+          "url": "http://{{ .Release.Name }}-cbx-mcp-server-k8s:8080/mcp/",
           "transport": "streamable_http"
         }
       }

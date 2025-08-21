@@ -1,7 +1,25 @@
 # Chart.yaml
 apiVersion: v2
 name: cbx-agent-k8sops
-description: A Helm chart for cbx-agent-k8sops
+description: A Helm chart for CBX Agent K8SOps with optional MCP server
 type: application
 version: 0.1.0
 appVersion: "v0.1.0"
+keywords:
+  - kubernetes
+  - operations
+  - ai
+  - agent
+  - mcp
+home: https://github.com/cembryonix/cbx-agent-k8sops
+sources:
+  - https://github.com/cembryonix/cbx-agent-k8sops
+maintainers:
+  - name: Cembryonix Team
+    email: team@cembryonix.com
+
+dependencies:
+  - name: cbx-mcp-server-k8s
+    version: ">=0.1.0"
+    repository: "file://../cbx-mcp-server-k8s"
+    condition: mcp_included
