@@ -1,22 +1,20 @@
 # values.yaml
 
-# MCP Server inclusion flag
-mcp_included: true
 
 # Agent configuration
 agent:
   replicaCount: 1
-  
+
   image:
     repository: ghcr.io/vkuusk/cbx-agent-k8sops
     tag: "v0.1.0"
     pullPolicy: IfNotPresent
-  
+
   service:
     type: ClusterIP
     port: 8000
     targetPort: 8000
-  
+
   ingress:
     enabled: true
     className: nginx
@@ -25,7 +23,7 @@ agent:
     host: cbx-agent-k8sops.yourdomain.com  # Change this to your domain
     path: /
     pathType: Prefix
-  
+
   # Secret references - these secrets must exist before deployment
   secretReferences:
     openaiApiKey:
@@ -36,7 +34,7 @@ agent:
       secretName: "cbx-agent-k8sops-anthropic-key"
       secretKey: "api-key"
       namespace: "cbx-agents"
-  
+
   # Configuration files for .k8sops directory
   config:
     configYaml: |
@@ -55,7 +53,7 @@ agent:
           }
         }
       }
-  
+
   resources:
     limits:
       cpu: 1000m
@@ -64,17 +62,9 @@ agent:
       cpu: 500m
       memory: 512Mi
 
-# MCP Server dependency configuration
-# This section configures the MCP server when deployed as a dependency
-cbx-mcp-server-k8s:
-  # Override MCP server values here if needed
-  # Most values will use defaults from the MCP server chart
-  ingress:
-    host: cbx-mcp-k8s.yourdomain.com  # Change this to your domain
-
-# Global settings
-nodeSelector: {}
-tolerations: []
-affinity: {}
-
-# Note: Both images are public on GHCR, no credentials needed
+# For agent and MCP server on the same cluster
+mcpConfig:
+  servers:
+    k8s_mcp:
+      url: "http://cbx-mcp-k8s.cbx-mcp-servers.svc.cluster.local:8080/mcp/"
+      transport: "streamable_http"

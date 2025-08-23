@@ -9,15 +9,13 @@ data:
   config.yaml: |
 {{ .Values.agent.config.configYaml | nindent 4 }}
   mcp_config.json: |
-{{- if .Values.mcp_included }}
     {
       "mcp_servers": {
-        "k8s_mcp": {
-          "url": "http://{{ .Release.Name }}-cbx-mcp-server-k8s:8080/mcp/",
-          "transport": "streamable_http"
-        }
+        {{- range $name, $server := .Values.mcpConfig.servers }}
+        "{{ $name }}": {
+          "url": "{{ $server.url }}",
+          "transport": "{{ $server.transport }}"
+        }{{ if not (eq $name (keys $.Values.mcpConfig.servers | last)) }},{{ end }}
+        {{- end }}
       }
     }
-{{- else }}
-{{ .Values.agent.config.mcpConfigJson | nindent 4 }}
-{{- end }}
