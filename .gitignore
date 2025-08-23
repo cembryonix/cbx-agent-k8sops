@@ -1,7 +1,11 @@
-# This repo specic
+# This repo specific
 temp/
 .DS_Store
 runtime_venv/
+
+# Helm chart dependencies (generated files)
+pkg/helm/*/charts/
+*.tgz
 
 
 # Byte-compiled / optimized / DLL files
