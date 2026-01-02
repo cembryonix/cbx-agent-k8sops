@@ -25,4 +25,4 @@ services:
       - ${CBX_MCP_ARGOCD_CONFIG_DIR}:/home/appuser/.config/argocd:ro
     environment:
       - HOME=/home/appuser
-    user: "${DOCKER_UID}:${DOCKER_GID}"
+

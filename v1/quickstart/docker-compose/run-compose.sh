@@ -89,9 +89,12 @@ start_services() {
     echo "Starting K8SOps agent and MCP server..."
     if docker compose up -d; then
         echo "✅ K8SOps agent and MCP server started."
-        echo "🌐 Access at: http://localhost:$APP_PORT"
         echo "📝 View logs: docker logs -f cbx-agent-k8sops"
+        echo "---"
         echo "🛑 Stop both services: '$0 down'"
+        echo "---"
+        echo "🌐 Access at: http://localhost:$APP_PORT"
+        echo "---"
     else
         echo "❌ Failed to start services"
         popd > /dev/null

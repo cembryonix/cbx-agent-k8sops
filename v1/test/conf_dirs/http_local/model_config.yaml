@@ -7,9 +7,6 @@ global_config:
 providers:
  openai:
    models:
-     gpt-4.1-nano:
-       config_overrides: {}
-
      gpt-4o-mini:
        context_window: 128000
        config_overrides: {}
@@ -17,20 +14,12 @@ providers:
        config_overrides:
          temperature: 0.1
      gpt-5-nano:
-       config_overrides:
-         reasoning_effort: minimal
-         verbosity: low
-     gpt-5-mini:
        context_window: 272000
        config_overrides:
          streaming: false
          reasoning_effort: minimal
          verbosity: low
-     gpt-5:
-       config_overrides:
-         streaming: false
-         reasoning_effort: minimal
-         verbosity: low
+
  ollama:
    base_config:
      base_url: http://localhost:11434

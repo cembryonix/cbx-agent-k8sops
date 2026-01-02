@@ -1,12 +1,14 @@
-# CBX Agent K8SOps - Quick Start
+# CBX Agent K8SOps - Quick Start 
 
 Quick deployment guide for trying out CBX Agent K8SOps with MCP server.
 
-## Prerequisites
+## Prerequisites 
 
 - Kubernetes cluster with kubectl access
-- Helm 3.x installed
+- Working KUBECONFIG file (current context will be used)
 - OpenAI API key
+
+
 
 ## What to Edit
 

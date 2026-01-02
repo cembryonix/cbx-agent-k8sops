@@ -51,7 +51,8 @@ if [ -d "${root_dir}/venv" ]; then
     source ${root_dir}/venv/bin/activate
 fi
 
-MY_HOST_IP=$(get_local_ip)
+MY_HOST_IP=cbx-mcp-k8s.vvklab.cloud.cembryonix.com
+#MY_HOST_IP=$(get_local_ip)
 # Generate MCP config from template
 sed "s/MCP_SERVER_IP/$MY_HOST_IP/g" \
     "${conf_dir}/mcp_config.template.json" \
