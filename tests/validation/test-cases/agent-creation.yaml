@@ -1,0 +1,29 @@
+# Agent Creation Tests
+# ====================
+# Tests for LangGraph agent creation and tool binding.
+
+category: creation
+description: "Agent creation and tool binding tests"
+
+tests:
+  - name: "agent_create_with_tools"
+    description: "Create agent with MCP tools"
+    action: agent_create
+    params:
+      with_tools: true
+    expect:
+      success: true
+
+  - name: "agent_create_without_tools"
+    description: "Create agent without tools (fallback)"
+    action: agent_create
+    params:
+      with_tools: false
+    expect:
+      success: true
+
+  - name: "agent_tool_binding"
+    description: "Verify tools are bound to agent"
+    action: agent_tool_binding
+    expect:
+      tool_count: 7

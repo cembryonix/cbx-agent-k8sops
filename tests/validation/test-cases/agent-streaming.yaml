@@ -1,0 +1,31 @@
+# Streaming Tests
+# ===============
+# Tests for agent streaming events.
+
+category: streaming
+description: "Agent streaming event tests"
+
+tests:
+  - name: "stream_tokens"
+    description: "Verify on_chat_model_stream events"
+    action: agent_stream
+    params:
+      query: "Say hello world"
+      expect_events:
+        - on_chat_model_stream
+      thread_id: "stream-tokens-test"
+    expect:
+      success: true
+
+  - name: "stream_tool_events"
+    description: "Verify tool start/end events"
+    action: agent_stream
+    params:
+      query: "Use kubectl to check cluster version"
+      expect_events:
+        - on_chat_model_stream
+        - on_tool_start
+        - on_tool_end
+      thread_id: "stream-tool-test"
+    expect:
+      success: true

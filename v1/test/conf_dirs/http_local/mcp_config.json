@@ -1,0 +1,8 @@
+{
+  "mcp_servers": {
+    "k8s_mcp": {
+      "url": "http://cbx-mcp-k8s.vvklab.cloud.cembryonix.com/mcp/",
+      "transport": "streamable_http"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+# Error Handling Tests
+# ====================
+# Tests for error handling scenarios.
+
+category: errors
+description: "Error handling and edge case tests"
+
+tests:
+  - name: "error_invalid_api_key"
+    description: "Handle invalid API key gracefully"
+    action: error_handling
+    params:
+      error_type: invalid_api_key
+    expect:
+      raises_auth_error: true
+
+  - name: "error_unreachable_api"
+    description: "Handle unreachable API endpoint"
+    action: error_handling
+    params:
+      error_type: unreachable_api
+    expect:
+      raises_connection_error: true
+
+  - name: "error_tool_execution"
+    description: "Handle tool execution error"
+    action: error_handling
+    params:
+      error_type: tool_error
+    expect:
+      handled: true
+
+  - name: "error_invalid_tool"
+    description: "Handle request for non-existent tool"
+    action: error_handling
+    params:
+      error_type: invalid_tool
+    expect:
+      raises_error: true

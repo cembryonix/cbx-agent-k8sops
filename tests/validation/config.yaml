@@ -1,0 +1,48 @@
+# Validation Configuration
+# ========================
+
+server:
+  # MCP server URL
+  url: "https://cbx-mcp-k8s.vvklab.cloud.cembryonix.com/mcp"
+
+  # Transport protocol (http for streamable-http)
+  transport: "http"
+
+  # SSL verification (false for self-signed certs)
+  ssl_verify: false
+
+  # Request timeout in seconds
+  timeout: 30
+
+# Agent/LLM configuration
+agent:
+  # LLM provider: anthropic, openai, ollama
+  provider: "anthropic"
+
+  # Model name
+  model: "claude-sonnet-4-20250514"
+
+tests:
+  # Enable verbose output
+  verbose: false
+
+  # Stop on first failure
+  fail_fast: false
+
+  # Test categories to run (empty = all)
+  # MCP categories: protocol, read-only
+  # Agent categories: model, creation, execution, streaming, conversation, errors
+  categories: []
+
+  # Timeout for individual tests (seconds)
+  timeout: 60
+
+# Expected tools that should be available
+expected_tools:
+  - k8s_kubectl_execute
+  - k8s_kubectl_describe
+  - k8s_helm_execute
+  - k8s_helm_describe
+  - k8s_argocd_execute
+  - k8s_argocd_describe
+  - k8s_ping
