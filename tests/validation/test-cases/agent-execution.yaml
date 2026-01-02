@@ -1,0 +1,57 @@
+# Agent Execution Tests
+# =====================
+# Tests for agent query execution with and without tools.
+
+category: execution
+description: "Agent execution and tool usage tests"
+
+tests:
+  - name: "agent_simple_query"
+    description: "Answer simple question without tools"
+    action: agent_query
+    params:
+      query: "What is 2+2? Answer with just the number."
+      expect_tool: false
+      thread_id: "simple-query-test"
+    expect:
+      contains: "4"
+
+  - name: "agent_tool_selection"
+    description: "Agent decides to use tool for K8s query"
+    action: agent_query
+    params:
+      query: "List all namespaces in the cluster"
+      expect_tool: true
+      thread_id: "tool-selection-test"
+    expect:
+      contains: "default"
+
+  - name: "agent_tool_execution"
+    description: "Agent executes kubectl tool"
+    action: agent_query
+    params:
+      query: "How many nodes are in the cluster? Use kubectl to find out."
+      expect_tool: true
+      thread_id: "tool-execution-test"
+    expect:
+      success: true
+
+  - name: "agent_multi_tool"
+    description: "Agent uses multiple tools"
+    action: agent_query
+    params:
+      query: "What is the kubectl version and how many namespaces exist? Provide both answers."
+      expect_tool: true
+      thread_id: "multi-tool-test"
+    expect:
+      success: true
+
+  - name: "agent_no_tool_needed"
+    description: "Agent skips tools for general knowledge"
+    action: agent_query
+    params:
+      query: "What is Kubernetes? Give a brief one-sentence answer."
+      expect_tool: false
+      thread_id: "no-tool-test"
+    expect:
+      contains: "container"

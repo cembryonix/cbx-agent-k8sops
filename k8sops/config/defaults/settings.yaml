@@ -1,0 +1,24 @@
+# K8SOps Agent - Default Settings
+# =================================
+# These are built-in defaults. Override with user config or environment variables.
+
+# LLM settings
+llm:
+  temperature: 0.0
+  max_tokens: 4096
+
+# MCP client settings
+mcp:
+  transport: "http"  # http | stdio
+  ssl_verify: false
+  timeout: 30
+
+# UI settings
+ui:
+  show_tool_calls: true
+  stream_responses: true
+
+# Application settings
+app:
+  debug: false
+  log_level: "info"

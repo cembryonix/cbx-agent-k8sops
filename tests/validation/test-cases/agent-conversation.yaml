@@ -1,0 +1,35 @@
+# Conversation Tests
+# ==================
+# Tests for multi-turn conversation and memory.
+
+category: conversation
+description: "Conversation memory and thread isolation tests"
+
+tests:
+  - name: "memory_single_turn"
+    description: "Single message/response"
+    action: conversation_memory
+    params:
+      messages:
+        - "Hello, I am testing the agent."
+      thread_id: "single-turn-test"
+    expect:
+      success: true
+
+  - name: "memory_multi_turn"
+    description: "Multi-turn with context retention"
+    action: conversation_memory
+    params:
+      messages:
+        - "My name is Alice."
+        - "What is my name?"
+      thread_id: "multi-turn-test"
+    expect:
+      final_contains: "Alice"
+
+  - name: "thread_isolation"
+    description: "Different threads are isolated"
+    action: thread_isolation
+    params: {}
+    expect:
+      success: true

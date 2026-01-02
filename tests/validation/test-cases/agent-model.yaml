@@ -1,0 +1,49 @@
+# Model Layer Tests
+# =================
+# Tests for LLM model creation and basic invocation.
+
+category: model
+description: "LLM model creation and invocation tests"
+
+tests:
+  # Model creation tests
+  - name: "model_anthropic_create"
+    description: "Create Anthropic Claude model"
+    action: model_create
+    params:
+      provider: anthropic
+    expect:
+      success: true
+
+  - name: "model_openai_create"
+    description: "Create OpenAI model"
+    action: model_create
+    params:
+      provider: openai
+    expect:
+      success: true
+
+  - name: "model_ollama_create"
+    description: "Create Ollama local model"
+    action: model_create
+    params:
+      provider: ollama
+      model: llama3.2
+    expect:
+      success: true
+
+  - name: "model_from_config"
+    description: "Create model from environment config"
+    action: model_create
+    params: {}
+    expect:
+      success: true
+
+  # Model invocation tests
+  - name: "model_simple_invoke"
+    description: "Simple model invocation"
+    action: model_invoke
+    params:
+      prompt: "Say 'hello' and nothing else."
+    expect:
+      contains: "hello"

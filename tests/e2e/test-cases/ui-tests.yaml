@@ -1,0 +1,93 @@
+# E2E UI Tests
+# =============
+# These tests validate UI elements and interactions using Playwright.
+# Non-developers can modify these tests without touching Python code.
+
+category: ui
+description: "End-to-end UI tests for K8SOps Agent"
+
+# Default settings (can be overridden per test)
+defaults:
+  timeout: 30000  # ms
+
+tests:
+  # Page load test
+  - name: "page_loads"
+    description: "Page loads without JavaScript errors"
+    action: "navigate"
+    settings:
+      wait_until: "networkidle"
+    expect:
+      response_ok: true
+      no_console_errors: true
+
+  # Initialization test
+  - name: "initialization"
+    description: "Agent initializes and connects to MCP server"
+    action: "wait_for_text"
+    settings:
+      text: "Connected to K8S MCP server"
+      timeout: 30000
+    expect:
+      text_visible: true
+    on_failure:
+      check_selectors:
+        - "[class*='error']"
+        - "[class*='red']"
+
+  # Sidebar visibility test
+  - name: "sidebar_visible"
+    description: "Sidebar or navigation toggle is visible"
+    action: "check_element"
+    selectors:
+      # Try multiple selectors - any match is success
+      - "[class*='sidebar']"
+      - "aside"
+      - "[class*='w-64']"
+      - "[class*='w-80']"
+      - "button[class*='menu']"
+      - "[class*='toggle']"
+      - "svg[class*='menu']"
+    expect:
+      any_visible: true
+    soft_pass: true  # Don't fail if not found (mobile layout)
+    on_failure:
+      screenshot: "/tmp/e2e_test_sidebar.png"
+
+  # Input bar visibility test
+  - name: "input_bar_visible"
+    description: "Chat input bar is visible and ready for user input"
+    action: "check_element"
+    selectors:
+      - "input[type='text']"
+      - "textarea"
+      - "[contenteditable='true']"
+    expect:
+      any_visible: true
+
+  # Send message test
+  - name: "send_message"
+    description: "User can send a message and receive a response"
+    action: "interact"
+    steps:
+      - type: "find_element"
+        selectors:
+          - "input[type='text']"
+          - "textarea"
+          - "input[placeholder*='message' i]"
+          - "input[placeholder*='ask' i]"
+        required: true
+      - type: "fill"
+        value: "What is 2+2?"
+      - type: "press"
+        key: "Enter"
+      - type: "wait_for_response"
+        timeout: 15000
+        expect_any:
+          - "4"
+          - "four"
+          - "Error"
+    on_failure:
+      screenshot: "/tmp/e2e_test_message.png"
+    expect:
+      response_received: true
