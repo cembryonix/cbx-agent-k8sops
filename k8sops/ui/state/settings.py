@@ -9,6 +9,10 @@ from k8sops.config import (
     get_default_provider,
 )
 
+# Load defaults from config at module level (from config/defaults/models.yaml)
+default_provider = get_default_provider()
+default_model = get_default_model(default_provider)
+
 
 class SettingsState(rx.State):
     """State for application settings.
@@ -19,9 +23,9 @@ class SettingsState(rx.State):
     Provider and model lists are loaded from config/defaults/models.yaml.
     """
 
-    # LLM settings
-    llm_provider: Literal["anthropic", "openai", "ollama"] = "anthropic"
-    model_name: str = "claude-sonnet-4-20250514"
+    # LLM settings - defaults loaded from config/defaults/models.yaml
+    llm_provider: str = default_provider
+    model_name: str = default_model
     temperature: float = 0.0
 
     # MCP settings

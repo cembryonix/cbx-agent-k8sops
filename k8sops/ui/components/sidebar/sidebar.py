@@ -89,8 +89,8 @@ def settings_popover() -> rx.Component:
                     rx.spacer(),
                     rx.cond(
                         ChatState.mcp_connected,
-                        rx.icon("check-circle", size=16, color="green"),
-                        rx.icon("x-circle", size=16, color="red"),
+                        rx.icon("circle-check", size=16, color="green"),
+                        rx.icon("circle-x", size=16, color="red"),
                     ),
                     width="100%",
                 ),
@@ -99,8 +99,8 @@ def settings_popover() -> rx.Component:
                     rx.spacer(),
                     rx.cond(
                         ChatState.agent_ready,
-                        rx.icon("check-circle", size=16, color="green"),
-                        rx.icon("x-circle", size=16, color="red"),
+                        rx.icon("circle-check", size=16, color="green"),
+                        rx.icon("circle-x", size=16, color="red"),
                     ),
                     width="100%",
                 ),

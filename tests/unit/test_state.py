@@ -20,7 +20,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
-class TestStatus(Enum):
+class Status(Enum):
     PASSED = "PASSED"
     FAILED = "FAILED"
     SKIPPED = "SKIPPED"
@@ -28,9 +28,9 @@ class TestStatus(Enum):
 
 
 @dataclass
-class TestResult:
+class Result:
     name: str
-    status: TestStatus
+    status: Status
     message: str
     duration_ms: float = 0.0
     details: dict[str, Any] = field(default_factory=dict)
@@ -41,13 +41,13 @@ class StateTestRunner:
 
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
-        self.results: list[TestResult] = []
+        self.results: list[Result] = []
 
     def _log(self, message: str) -> None:
         if self.verbose:
             print(f"  [DEBUG] {message}")
 
-    async def run_all_tests(self) -> list[TestResult]:
+    async def run_all_tests(self) -> list[Result]:
         """Run all state tests."""
         print("\n" + "=" * 60)
         print("State Unit Tests")
@@ -66,7 +66,7 @@ class StateTestRunner:
         self._print_summary()
         return self.results
 
-    async def _test_state_initial_values(self) -> TestResult:
+    async def _test_state_initial_values(self) -> Result:
         """Test that initial state values are correct."""
         start = time.time()
         try:
@@ -91,177 +91,177 @@ class StateTestRunner:
             # Verify ChatState has these attributes
             for attr, expected in defaults.items():
                 if not hasattr(ChatState, attr):
-                    return TestResult(
+                    return Result(
                         name="state_initial_values",
-                        status=TestStatus.FAILED,
+                        status=Status.FAILED,
                         message=f"ChatState missing attribute: {attr}",
                         duration_ms=(time.time() - start) * 1000,
                     )
 
-            return TestResult(
+            return Result(
                 name="state_initial_values",
-                status=TestStatus.PASSED,
+                status=Status.PASSED,
                 message="All initial state attributes present",
                 duration_ms=(time.time() - start) * 1000,
             )
 
         except Exception as e:
-            return TestResult(
+            return Result(
                 name="state_initial_values",
-                status=TestStatus.ERROR,
+                status=Status.ERROR,
                 message=str(e),
                 duration_ms=(time.time() - start) * 1000,
             )
 
-    async def _test_state_set_input(self) -> TestResult:
+    async def _test_state_set_input(self) -> Result:
         """Test set_input method exists and is callable."""
         start = time.time()
         try:
             from k8sops.ui.state.chat import ChatState
 
             if not hasattr(ChatState, "set_input"):
-                return TestResult(
+                return Result(
                     name="state_set_input",
-                    status=TestStatus.FAILED,
+                    status=Status.FAILED,
                     message="ChatState missing set_input method",
                     duration_ms=(time.time() - start) * 1000,
                 )
 
             if not callable(getattr(ChatState, "set_input")):
-                return TestResult(
+                return Result(
                     name="state_set_input",
-                    status=TestStatus.FAILED,
+                    status=Status.FAILED,
                     message="set_input is not callable",
                     duration_ms=(time.time() - start) * 1000,
                 )
 
-            return TestResult(
+            return Result(
                 name="state_set_input",
-                status=TestStatus.PASSED,
+                status=Status.PASSED,
                 message="set_input method available",
                 duration_ms=(time.time() - start) * 1000,
             )
 
         except Exception as e:
-            return TestResult(
+            return Result(
                 name="state_set_input",
-                status=TestStatus.ERROR,
+                status=Status.ERROR,
                 message=str(e),
                 duration_ms=(time.time() - start) * 1000,
             )
 
-    async def _test_state_clear_input(self) -> TestResult:
+    async def _test_state_clear_input(self) -> Result:
         """Test clear_input method."""
         start = time.time()
         try:
             from k8sops.ui.state.chat import ChatState
 
             if not hasattr(ChatState, "clear_input"):
-                return TestResult(
+                return Result(
                     name="state_clear_input",
-                    status=TestStatus.FAILED,
+                    status=Status.FAILED,
                     message="ChatState missing clear_input method",
                     duration_ms=(time.time() - start) * 1000,
                 )
 
-            return TestResult(
+            return Result(
                 name="state_clear_input",
-                status=TestStatus.PASSED,
+                status=Status.PASSED,
                 message="clear_input method available",
                 duration_ms=(time.time() - start) * 1000,
             )
 
         except Exception as e:
-            return TestResult(
+            return Result(
                 name="state_clear_input",
-                status=TestStatus.ERROR,
+                status=Status.ERROR,
                 message=str(e),
                 duration_ms=(time.time() - start) * 1000,
             )
 
-    async def _test_state_set_error(self) -> TestResult:
+    async def _test_state_set_error(self) -> Result:
         """Test set_error_message method."""
         start = time.time()
         try:
             from k8sops.ui.state.chat import ChatState
 
             if not hasattr(ChatState, "set_error_message"):
-                return TestResult(
+                return Result(
                     name="state_set_error",
-                    status=TestStatus.FAILED,
+                    status=Status.FAILED,
                     message="ChatState missing set_error_message method",
                     duration_ms=(time.time() - start) * 1000,
                 )
 
-            return TestResult(
+            return Result(
                 name="state_set_error",
-                status=TestStatus.PASSED,
+                status=Status.PASSED,
                 message="set_error_message method available",
                 duration_ms=(time.time() - start) * 1000,
             )
 
         except Exception as e:
-            return TestResult(
+            return Result(
                 name="state_set_error",
-                status=TestStatus.ERROR,
+                status=Status.ERROR,
                 message=str(e),
                 duration_ms=(time.time() - start) * 1000,
             )
 
-    async def _test_state_clear_error(self) -> TestResult:
+    async def _test_state_clear_error(self) -> Result:
         """Test clear_error method."""
         start = time.time()
         try:
             from k8sops.ui.state.chat import ChatState
 
             if not hasattr(ChatState, "clear_error"):
-                return TestResult(
+                return Result(
                     name="state_clear_error",
-                    status=TestStatus.FAILED,
+                    status=Status.FAILED,
                     message="ChatState missing clear_error method",
                     duration_ms=(time.time() - start) * 1000,
                 )
 
-            return TestResult(
+            return Result(
                 name="state_clear_error",
-                status=TestStatus.PASSED,
+                status=Status.PASSED,
                 message="clear_error method available",
                 duration_ms=(time.time() - start) * 1000,
             )
 
         except Exception as e:
-            return TestResult(
+            return Result(
                 name="state_clear_error",
-                status=TestStatus.ERROR,
+                status=Status.ERROR,
                 message=str(e),
                 duration_ms=(time.time() - start) * 1000,
             )
 
-    async def _test_state_clear_chat(self) -> TestResult:
+    async def _test_state_clear_chat(self) -> Result:
         """Test clear_chat method."""
         start = time.time()
         try:
             from k8sops.ui.state.chat import ChatState
 
             if not hasattr(ChatState, "clear_chat"):
-                return TestResult(
+                return Result(
                     name="state_clear_chat",
-                    status=TestStatus.FAILED,
+                    status=Status.FAILED,
                     message="ChatState missing clear_chat method",
                     duration_ms=(time.time() - start) * 1000,
                 )
 
-            return TestResult(
+            return Result(
                 name="state_clear_chat",
-                status=TestStatus.PASSED,
+                status=Status.PASSED,
                 message="clear_chat method available",
                 duration_ms=(time.time() - start) * 1000,
             )
 
         except Exception as e:
-            return TestResult(
+            return Result(
                 name="state_clear_chat",
-                status=TestStatus.ERROR,
+                status=Status.ERROR,
                 message=str(e),
                 duration_ms=(time.time() - start) * 1000,
             )
@@ -271,15 +271,15 @@ class StateTestRunner:
         print("Summary")
         print("=" * 60)
 
-        passed = sum(1 for r in self.results if r.status == TestStatus.PASSED)
-        failed = sum(1 for r in self.results if r.status == TestStatus.FAILED)
-        errors = sum(1 for r in self.results if r.status == TestStatus.ERROR)
+        passed = sum(1 for r in self.results if r.status == Status.PASSED)
+        failed = sum(1 for r in self.results if r.status == Status.FAILED)
+        errors = sum(1 for r in self.results if r.status == Status.ERROR)
 
         total = len(self.results)
         total_time = sum(r.duration_ms for r in self.results)
 
         for r in self.results:
-            status_str = f"\033[32m{r.status.value}\033[0m" if r.status == TestStatus.PASSED else f"\033[31m{r.status.value}\033[0m"
+            status_str = f"\033[32m{r.status.value}\033[0m" if r.status == Status.PASSED else f"\033[31m{r.status.value}\033[0m"
             print(f"  {r.name}: {status_str} ({r.duration_ms:.0f}ms)")
 
         print(f"\n  Passed: {passed}/{total}")
@@ -303,7 +303,7 @@ async def main() -> int:
     runner = StateTestRunner(verbose=args.verbose)
     results = await runner.run_all_tests()
 
-    failed = sum(1 for r in results if r.status in (TestStatus.FAILED, TestStatus.ERROR))
+    failed = sum(1 for r in results if r.status in (Status.FAILED, Status.ERROR))
     return 1 if failed > 0 else 0
 
 
