@@ -164,7 +164,6 @@ class AgentSession:
         Preserves the checkpointer across model switches to maintain
         conversation history.
         """
-        from langgraph.checkpoint.memory import MemorySaver
         from k8sops.models import create_model
         from k8sops.agent import create_agent_with_mcp
 
@@ -176,12 +175,40 @@ class AgentSession:
 
         # Create checkpointer once, reuse across model switches
         if self._checkpointer is None:
-            self._checkpointer = MemorySaver()
+            self._checkpointer = await self._create_checkpointer()
 
         self._agent = await create_agent_with_mcp(model, self._mcp_client, self._checkpointer)
         self._model_key = self.settings.model_key()
         self.agent_ready = True
         logger.info(f"Created agent with {self.settings.provider}/{self.settings.model_name}")
+
+    async def _create_checkpointer(self) -> Any:
+        """Create the appropriate checkpointer based on configuration.
+
+        Returns AsyncRedisSaver if REDIS_URL is configured, otherwise MemorySaver.
+        """
+        from k8sops.config import get_memory_settings
+
+        memory_settings = get_memory_settings()
+
+        if memory_settings.use_redis:
+            from langgraph.checkpoint.redis import AsyncRedisSaver
+            from langgraph.checkpoint.redis.ashallow import AsyncShallowRedisSaver
+
+            if memory_settings.shallow:
+                logger.info("Using AsyncShallowRedisSaver for persistent memory")
+                saver = AsyncShallowRedisSaver(redis_url=memory_settings.redis_url)
+            else:
+                logger.info("Using AsyncRedisSaver for persistent memory")
+                saver = AsyncRedisSaver(redis_url=memory_settings.redis_url)
+
+            await saver.asetup()
+            return saver
+        else:
+            from langgraph.checkpoint.memory import MemorySaver
+
+            logger.info("Using in-memory checkpointer (not persistent)")
+            return MemorySaver()
 
     async def update_settings(self, **kwargs) -> bool:
         """Update session settings and reinitialize agent if needed.

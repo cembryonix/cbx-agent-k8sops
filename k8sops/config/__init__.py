@@ -4,9 +4,11 @@ from .settings import (
     LLMSettings,
     MCPSettings,
     AppSettings,
+    MemorySettings,
     get_llm_settings,
     get_mcp_settings,
     get_app_settings,
+    get_memory_settings,
 )
 
 from .loader import (
@@ -26,9 +28,11 @@ __all__ = [
     "LLMSettings",
     "MCPSettings",
     "AppSettings",
+    "MemorySettings",
     "get_llm_settings",
     "get_mcp_settings",
     "get_app_settings",
+    "get_memory_settings",
     # Config loader (YAML-based)
     "get_models_config",
     "get_settings_config",
