@@ -54,10 +54,30 @@ class AppSettings(BaseSettings):
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 
+class MemorySettings(BaseSettings):
+    """Agent memory configuration."""
+
+    # Redis URL for short-term memory (checkpointer)
+    # If not set, uses in-memory storage (not persistent)
+    redis_url: str | None = Field(default=None, alias="REDIS_URL")
+
+    # Use shallow checkpointer (only stores latest state, not full history)
+    # Recommended for production to reduce memory usage
+    shallow: bool = Field(default=False, alias="MEMORY_SHALLOW")
+
+    model_config = {"env_file": ".env", "extra": "ignore"}
+
+    @property
+    def use_redis(self) -> bool:
+        """Check if Redis is configured."""
+        return self.redis_url is not None
+
+
 # Singleton instances
 _llm_settings: LLMSettings | None = None
 _mcp_settings: MCPSettings | None = None
 _app_settings: AppSettings | None = None
+_memory_settings: MemorySettings | None = None
 
 
 def get_llm_settings() -> LLMSettings:
@@ -82,3 +102,11 @@ def get_app_settings() -> AppSettings:
     if _app_settings is None:
         _app_settings = AppSettings()
     return _app_settings
+
+
+def get_memory_settings() -> MemorySettings:
+    """Get memory settings singleton."""
+    global _memory_settings
+    if _memory_settings is None:
+        _memory_settings = MemorySettings()
+    return _memory_settings

@@ -27,7 +27,7 @@ K8SOps follows a four-layer architecture:
 │  Agent Layer (LangGraph)                                    │
 │  - ReAct agent with create_react_agent()                    │
 │  - Real-time streaming via astream_events()                 │
-│  - MemorySaver checkpointer                                 │
+│  - Checkpointer (MemorySaver or RedisSaver)                 │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -198,7 +198,40 @@ LLM_MODEL=claude-sonnet-4-5-20250929
 MCP_TRANSPORT=http
 MCP_SERVER_URL=https://your-mcp-server.example.com
 MCP_SSL_VERIFY=true
+
+# Agent Memory (optional)
+REDIS_URL=redis://localhost:6379
+MEMORY_SHALLOW=true
 ```
+
+### Memory Configuration
+
+K8SOps supports persistent conversation memory using Redis. This enables:
+- Conversation history preserved across pod restarts
+- Session recovery after unexpected failures
+- Memory sharing across multiple instances (with sticky sessions)
+
+**Options:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDIS_URL` | (none) | Redis connection URL. If not set, uses in-memory storage (lost on restart). |
+| `MEMORY_SHALLOW` | `false` | Use shallow checkpointer that only stores latest state. Recommended for production to reduce memory usage. |
+
+**Examples:**
+
+```bash
+# Local Redis
+REDIS_URL=redis://localhost:6379
+
+# Redis with password
+REDIS_URL=redis://:password@redis-host:6379
+
+# Redis in Kubernetes
+REDIS_URL=redis://redis-service.default.svc.cluster.local:6379
+```
+
+When `REDIS_URL` is set, the agent uses `RedisSaver` (or `ShallowRedisSaver` if `MEMORY_SHALLOW=true`) from `langgraph-checkpoint-redis`. Without it, the default `MemorySaver` is used (in-memory, not persistent).
 
 ### Run
 
