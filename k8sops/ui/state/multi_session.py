@@ -76,18 +76,12 @@ class MultiSessionState(rx.State):
     _session_store_initialized: bool = False
 
     async def _get_session_store(self):
-        """Get or create SessionStore instance."""
+        """Get or create session store instance based on backend config."""
         from k8sops.config import get_memory_settings
-        from k8sops.session import SessionStore
+        from k8sops.session import get_session_store
 
         memory_settings = get_memory_settings()
-        if not memory_settings.use_redis:
-            return None
-
-        return SessionStore(
-            redis_url=memory_settings.redis_url,
-            user_id=memory_settings.user_id,
-        )
+        return get_session_store(user_id=memory_settings.user_id)
 
     async def load_sessions(self):
         """Load session list from Redis."""
@@ -98,7 +92,7 @@ class MultiSessionState(rx.State):
         try:
             store = await self._get_session_store()
             if store is None:
-                logger.warning("Session store not available (Redis not configured)")
+                logger.warning("Session store not available (memory-only mode)")
                 self.sessions = []
                 return
 

@@ -51,7 +51,12 @@ K8SOps follows a four-layer architecture:
 k8sops/
 ├── __init__.py             # Exports AgentSession, SessionSettings
 ├── k8sops.py               # Reflex entry point
-├── session.py              # AgentSession - core session management
+│
+├── session/                # Session Management Module
+│   ├── __init__.py         # Exports and factory function
+│   ├── agent_session.py    # AgentSession - core session management
+│   ├── store.py            # SessionStore - Redis session metadata
+│   └── file_store.py       # FileSessionStore - JSONL file storage
 │
 ├── ui/                     # UI Layer (Reflex)
 │   ├── app.py              # rx.App definition
@@ -60,10 +65,11 @@ k8sops/
 │   │   ├── base.py         # BaseState (sidebar toggle)
 │   │   ├── chat.py         # ChatState (wraps AgentSession)
 │   │   ├── settings.py     # SettingsState (triggers agent reinit)
+│   │   ├── multi_session.py # Multi-session sidebar state
 │   │   └── session_manager.py  # Maps UI tokens to AgentSession
 │   ├── components/
 │   │   ├── chat/           # Message bubbles, input bar
-│   │   ├── sidebar/        # Settings panel
+│   │   ├── sidebar/        # Settings panel, session list
 │   │   ├── tool_panel/     # Tool call visualization
 │   │   └── common/         # Markdown, code blocks
 │   └── pages/
@@ -199,29 +205,59 @@ MCP_TRANSPORT=http
 MCP_SERVER_URL=https://your-mcp-server.example.com
 MCP_SSL_VERIFY=true
 
-# Agent Memory (optional)
-REDIS_URL=redis://localhost:6379
-MEMORY_SHALLOW=true
+# Agent Memory (choose one backend)
+# Option 1: Filesystem (local development)
+MEMORY_BACKEND=filesystem
+
+# Option 2: Redis (production)
+#MEMORY_BACKEND=redis
+#REDIS_URL=redis://localhost:6379
+#MEMORY_SHALLOW=true
 ```
 
 ### Memory Configuration
 
-K8SOps supports two types of memory using Redis:
+K8SOps supports three storage backends for session management:
 
-1. **Short-term memory** (checkpointer) - Conversation state within a session
-2. **Long-term memory** (store) - Facts and learnings across sessions
+| Backend | Use Case | Persistence | Requirements |
+|---------|----------|-------------|--------------|
+| `memory` | Testing | None (lost on restart) | None |
+| `filesystem` | Local development | JSONL files | None |
+| `redis` | Production | Redis server | Redis instance |
 
-#### Short-term Memory
-
-Preserves conversation history within a session:
-- Conversation history preserved across pod restarts
-- Session recovery after unexpected failures
-- Memory sharing across multiple instances (with sticky sessions)
+#### Storage Backend Selection
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `REDIS_URL` | (none) | Redis connection URL. If not set, uses in-memory storage (lost on restart). |
+| `MEMORY_BACKEND` | `memory` | Storage backend: `memory`, `filesystem`, or `redis`. |
+| `MEMORY_FILESYSTEM_PATH` | `~/.k8sops` | Base path for filesystem storage (when `MEMORY_BACKEND=filesystem`). |
+| `REDIS_URL` | (none) | Redis connection URL (required when `MEMORY_BACKEND=redis`). |
 | `MEMORY_SHALLOW` | `false` | Use shallow checkpointer that only stores latest state. Recommended for production. |
+
+#### Filesystem Backend
+
+The filesystem backend provides local persistence without requiring Redis. Ideal for local development.
+
+**How it works:**
+- Active session uses in-memory checkpointer (MemorySaver) for fast performance
+- Each message is persisted to JSONL file in real-time
+- When switching sessions, conversation is restored from JSONL file
+
+**Storage structure:**
+```
+~/.k8sops/
+├── sessions.jsonl           # Session metadata index
+└── sessions/
+    └── <user_id>/
+        └── <session_id>.jsonl   # Conversation messages
+```
+
+#### Redis Backend (Short-term Memory)
+
+For production deployments with Redis:
+- Conversation history preserved across pod restarts
+- Session recovery after unexpected failures
+- Memory sharing across multiple instances (with sticky sessions)
 
 #### Long-term Memory
 
@@ -241,16 +277,23 @@ Learns from sessions and retrieves relevant context for future interactions:
 | `MEMORY_MAX_MEMORIES` | `5` | Number of memories to retrieve per search. |
 | `MEMORY_USER_ID` | `default` | User ID for memory namespace (when no auth). |
 
-**Example configuration:**
+**Example configurations:**
 
+Local development (no Redis):
 ```bash
-# Redis connection (required for both memory types)
-REDIS_URL=redis://localhost:6379
+# Filesystem storage for local development
+MEMORY_BACKEND=filesystem
+MEMORY_FILESYSTEM_PATH=~/.k8sops
+```
 
-# Short-term memory
+Production (with Redis):
+```bash
+# Redis storage for production
+MEMORY_BACKEND=redis
+REDIS_URL=redis://localhost:6379
 MEMORY_SHALLOW=true
 
-# Long-term memory
+# Long-term memory (optional)
 MEMORY_LONG_TERM_ENABLED=true
 EMBEDDING_PROVIDER=openai
 ```
@@ -273,7 +316,7 @@ Session End:
 
 #### Multi-Session Support
 
-K8SOps supports multiple persistent chat sessions (requires Redis):
+K8SOps supports multiple persistent chat sessions (requires `filesystem` or `redis` backend):
 
 - View list of past conversations in a sidebar
 - Switch between conversations

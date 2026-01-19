@@ -43,6 +43,7 @@ class SessionStore:
     Storage schema:
     - sessions:{user_id}:index -> Sorted set of session_ids by updated_at
     - sessions:{user_id}:{session_id} -> JSON with session metadata
+    - sessions:{user_id}:{session_id}:tool_calls -> List of tool call JSON objects
     """
 
     def __init__(self, redis_url: str, user_id: str = "default"):
@@ -69,6 +70,10 @@ class SessionStore:
     def _session_key(self, session_id: str) -> str:
         """Get the key for session metadata."""
         return f"sessions:{self.user_id}:{session_id}"
+
+    def _tool_calls_key(self, session_id: str) -> str:
+        """Get the key for session tool calls."""
+        return f"sessions:{self.user_id}:{session_id}:tool_calls"
 
     async def create_session(
         self,
@@ -153,6 +158,9 @@ class SessionStore:
             if metadata:
                 sessions.append(metadata)
 
+        # Sort by updated_at as fallback (ensures consistent ordering)
+        sessions.sort(key=lambda s: s.updated_at, reverse=True)
+
         return sessions
 
     async def update_session(
@@ -203,9 +211,9 @@ class SessionStore:
         return metadata
 
     async def delete_session(self, session_id: str) -> bool:
-        """Delete session metadata.
+        """Delete session metadata and tool calls.
 
-        Note: This only deletes metadata, not checkpoint data.
+        Note: This only deletes metadata and tool calls, not checkpoint data.
         Use cleanup_checkpoints() to remove checkpoint data.
 
         Args:
@@ -225,6 +233,9 @@ class SessionStore:
 
         # Remove metadata
         await client.delete(self._session_key(session_id))
+
+        # Remove tool calls
+        await client.delete(self._tool_calls_key(session_id))
 
         logger.info(f"Deleted session {session_id[:8]}...")
         return True
@@ -308,6 +319,60 @@ class SessionStore:
 
         logger.info(f"Deleted all {count} sessions for user {self.user_id}")
         return count
+
+    async def append_tool_call(
+        self,
+        session_id: str,
+        tool_call: dict,
+    ) -> None:
+        """Append a tool call to session.
+
+        Args:
+            session_id: Session identifier.
+            tool_call: Tool call dict with id, name, arguments, status, output, error.
+        """
+        client = await self._get_client()
+        tool_call_data = {
+            "id": tool_call.get("id", ""),
+            "name": tool_call.get("name", ""),
+            "arguments": tool_call.get("arguments", ""),
+            "status": tool_call.get("status", "complete"),
+            "output": tool_call.get("output", ""),
+            "error": tool_call.get("error", ""),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        await client.rpush(self._tool_calls_key(session_id), json.dumps(tool_call_data))
+        logger.debug(f"Appended tool call {tool_call.get('name')} to session {session_id[:8]}...")
+
+    async def get_tool_calls(self, session_id: str) -> list[dict]:
+        """Get all tool calls for a session.
+
+        Args:
+            session_id: Session identifier.
+
+        Returns:
+            List of tool call dicts.
+        """
+        client = await self._get_client()
+        tool_calls_data = await client.lrange(self._tool_calls_key(session_id), 0, -1)
+
+        tool_calls = []
+        for data in tool_calls_data:
+            try:
+                tc_str = data.decode() if isinstance(data, bytes) else data
+                tc = json.loads(tc_str)
+                tool_calls.append({
+                    "id": tc.get("id", ""),
+                    "name": tc.get("name", ""),
+                    "arguments": tc.get("arguments", ""),
+                    "status": tc.get("status", "complete"),
+                    "output": tc.get("output", ""),
+                    "error": tc.get("error", ""),
+                })
+            except (json.JSONDecodeError, AttributeError):
+                continue
+
+        return tool_calls
 
     async def close(self) -> None:
         """Close Redis connection."""

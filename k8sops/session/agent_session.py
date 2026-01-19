@@ -5,6 +5,7 @@ It's independent of any UI framework (Reflex, CLI, etc.) and can be used
 by any interface.
 """
 
+import json
 import logging
 import uuid
 from dataclasses import dataclass, field
@@ -66,6 +67,46 @@ class ToolCall:
     status: str = "pending"  # "pending", "running", "complete", "error"
     output: str = ""
     error: str = ""
+
+
+def _extract_tool_arguments(input_data: dict) -> str:
+    """Extract only the relevant tool arguments from input data.
+
+    Filters out internal LangGraph/runtime fields that are not actual tool arguments.
+
+    Args:
+        input_data: The raw input dict from the tool call event.
+
+    Returns:
+        JSON string of the filtered arguments.
+    """
+    if not isinstance(input_data, dict):
+        return str(input_data)
+
+    # Keys to exclude (internal LangGraph/runtime context)
+    exclude_keys = {
+        "runtime",
+        "context",
+        "config",
+        "store",
+        "stream_writer",
+        "tool_call_id",
+        "state",
+        "configurable",
+        "callbacks",
+    }
+
+    # Filter to only actual tool arguments
+    filtered = {k: v for k, v in input_data.items() if k not in exclude_keys}
+
+    if not filtered:
+        return str(input_data)
+
+    # Format nicely
+    try:
+        return json.dumps(filtered, indent=2, default=str)
+    except Exception:
+        return str(filtered)
 
 
 class AgentSession:
@@ -192,19 +233,17 @@ class AgentSession:
             True if resuming an existing session, False if new session.
         """
         from k8sops.config import get_memory_settings, get_app_settings
-        from k8sops.session.store import SessionStore
+        from k8sops.session import get_session_store
 
         memory_settings = get_memory_settings()
         app_settings = get_app_settings()
 
-        if not memory_settings.use_redis:
-            logger.debug("Redis not configured, session store disabled")
-            return False
+        # Get appropriate session store based on backend config
+        self._session_store = get_session_store(user_id=memory_settings.user_id)
 
-        self._session_store = SessionStore(
-            redis_url=memory_settings.redis_url,
-            user_id=memory_settings.user_id,
-        )
+        if self._session_store is None:
+            logger.debug("Session store disabled (memory-only mode)")
+            return False
 
         # Check if session exists (resuming) or create new
         if await self._session_store.session_exists(self.session_id):
@@ -260,7 +299,10 @@ class AgentSession:
     async def _create_checkpointer(self) -> Any:
         """Create the appropriate checkpointer based on configuration.
 
-        Returns AsyncRedisSaver if REDIS_URL is configured, otherwise MemorySaver.
+        Returns:
+            - AsyncRedisSaver for Redis backend
+            - MemorySaver for filesystem backend (persistence via JSONL files)
+            - MemorySaver for memory-only mode
         """
         from k8sops.config import get_memory_settings
 
@@ -279,6 +321,15 @@ class AgentSession:
 
             await saver.asetup()
             return saver
+
+        elif memory_settings.use_filesystem:
+            from langgraph.checkpoint.memory import MemorySaver
+
+            # Filesystem backend uses MemorySaver for active session
+            # Messages are persisted to JSONL files separately
+            logger.info("Using MemorySaver with JSONL file persistence")
+            return MemorySaver()
+
         else:
             from langgraph.checkpoint.memory import MemorySaver
 
@@ -286,11 +337,19 @@ class AgentSession:
             return MemorySaver()
 
     async def _restore_messages_from_checkpointer(self) -> bool:
-        """Restore conversation messages from the checkpointer.
+        """Restore conversation messages from storage.
+
+        For filesystem backend: loads from JSONL file.
+        For Redis backend: loads from checkpointer.
 
         Returns:
             True if messages were restored, False otherwise.
         """
+        # Try filesystem restore first (JSONL files)
+        if await self._restore_from_jsonl():
+            return True
+
+        # Fall back to checkpointer (Redis backend)
         if not self._checkpointer:
             return False
 
@@ -324,10 +383,81 @@ class AgentSession:
 
                     if self.messages:
                         logger.info(f"Restored {len(self.messages)} messages from checkpointer")
-                        return True
+
+            # Also restore tool calls from Redis session store
+            if self._session_store and hasattr(self._session_store, "get_tool_calls"):
+                try:
+                    tool_calls = await self._session_store.get_tool_calls(self.session_id)
+                    if tool_calls:
+                        self.tool_calls = [
+                            ToolCall(
+                                id=tc.get("id", ""),
+                                name=tc.get("name", ""),
+                                arguments=tc.get("arguments", ""),
+                                status=tc.get("status", "complete"),
+                                output=tc.get("output", ""),
+                                error=tc.get("error", ""),
+                            )
+                            for tc in tool_calls
+                        ]
+                        logger.info(f"Restored {len(self.tool_calls)} tool calls from Redis")
+                except Exception as e:
+                    logger.warning(f"Failed to restore tool calls from Redis: {e}")
+
+            return bool(self.messages)
 
         except Exception as e:
             logger.warning(f"Failed to restore messages from checkpointer: {e}")
+
+        return False
+
+    async def _restore_from_jsonl(self) -> bool:
+        """Restore messages and tool calls from JSONL file (filesystem backend).
+
+        Returns:
+            True if messages were restored, False otherwise.
+        """
+        if not self._session_store:
+            return False
+
+        # Check if using FileSessionStore (has get_messages method)
+        if not hasattr(self._session_store, "get_messages"):
+            return False
+
+        try:
+            messages = await self._session_store.get_messages(self.session_id)
+
+            if messages:
+                self.messages = [
+                    Message(role=msg["role"], content=msg["content"])
+                    for msg in messages
+                    if msg.get("role") and msg.get("content")
+                ]
+
+                if self.messages:
+                    logger.info(f"Restored {len(self.messages)} messages from JSONL file")
+
+            # Also restore tool calls if available
+            if hasattr(self._session_store, "get_tool_calls"):
+                tool_calls = await self._session_store.get_tool_calls(self.session_id)
+                if tool_calls:
+                    self.tool_calls = [
+                        ToolCall(
+                            id=tc.get("id", ""),
+                            name=tc.get("name", ""),
+                            arguments=tc.get("arguments", ""),
+                            status=tc.get("status", "complete"),
+                            output=tc.get("output", ""),
+                            error=tc.get("error", ""),
+                        )
+                        for tc in tool_calls
+                    ]
+                    logger.info(f"Restored {len(self.tool_calls)} tool calls from JSONL file")
+
+            return bool(self.messages)
+
+        except Exception as e:
+            logger.warning(f"Failed to restore from JSONL: {e}")
 
         return False
 
@@ -400,6 +530,51 @@ class AgentSession:
         except Exception as e:
             logger.warning(f"Failed to extract memories during session: {e}")
 
+    async def _persist_message(self, role: str, content: str) -> None:
+        """Persist a message to JSONL file (filesystem backend only).
+
+        Args:
+            role: Message role (user/assistant).
+            content: Message content.
+        """
+        if not self._session_store:
+            return
+
+        # Check if using FileSessionStore (has append_message method)
+        if hasattr(self._session_store, "append_message"):
+            try:
+                await self._session_store.append_message(
+                    self.session_id, role, content
+                )
+            except Exception as e:
+                logger.warning(f"Failed to persist message to file: {e}")
+
+    async def _persist_tool_call(self, tool_call: ToolCall) -> None:
+        """Persist a tool call to JSONL file (filesystem backend only).
+
+        Args:
+            tool_call: ToolCall to persist.
+        """
+        if not self._session_store:
+            return
+
+        # Check if using FileSessionStore (has append_tool_call method)
+        if hasattr(self._session_store, "append_tool_call"):
+            try:
+                await self._session_store.append_tool_call(
+                    self.session_id,
+                    {
+                        "id": tool_call.id,
+                        "name": tool_call.name,
+                        "arguments": tool_call.arguments,
+                        "status": tool_call.status,
+                        "output": tool_call.output,
+                        "error": tool_call.error,
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to persist tool call to file: {e}")
+
     async def update_settings(self, **kwargs) -> bool:
         """Update session settings and reinitialize agent if needed.
 
@@ -457,6 +632,9 @@ class AgentSession:
         self.messages.append(user_message)
         yield {"type": "user_message", "content": user_message.content}
 
+        # Persist user message to JSONL (filesystem backend)
+        await self._persist_message("user", user_message.content)
+
         # Set session title from first user message
         if not self._title_set and self._session_store:
             title = content.strip()[:50]
@@ -467,7 +645,8 @@ class AgentSession:
 
         self.is_streaming = True
         self.is_processing = True
-        self.tool_calls = []
+        # Note: tool_calls are NOT cleared here - they accumulate across the session
+        # and are persisted/restored for session continuity
 
         # Prepare assistant message
         assistant_content = ""
@@ -496,7 +675,7 @@ class AgentSession:
                     tool_call = ToolCall(
                         id=event.get("run_id", ""),
                         name=event.get("name", "unknown"),
-                        arguments=str(event.get("data", {}).get("input", {})),
+                        arguments=_extract_tool_arguments(event.get("data", {}).get("input", {})),
                         status="running",
                     )
                     self.tool_calls.append(tool_call)
@@ -511,12 +690,17 @@ class AgentSession:
                         if tc.id == run_id:
                             tc.status = "complete"
                             tc.output = str(output)
+                            # Persist tool call to JSONL (filesystem backend)
+                            await self._persist_tool_call(tc)
                             yield {"type": "tool_end", "tool_call": tc}
                             break
 
             # Add assistant message
             self.messages.append(Message(role="assistant", content=assistant_content))
             yield {"type": "assistant_message", "content": assistant_content}
+
+            # Persist assistant message to JSONL (filesystem backend)
+            await self._persist_message("assistant", assistant_content)
 
             # Update session metadata (preview and message count)
             if self._session_store:

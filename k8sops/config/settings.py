@@ -61,9 +61,21 @@ class AppSettings(BaseSettings):
 class MemorySettings(BaseSettings):
     """Agent memory configuration."""
 
-    # Redis URL for short-term memory (checkpointer) and long-term memory (store)
-    # If not set, uses in-memory storage (not persistent)
+    # Backend type: redis, filesystem, or memory
+    # - redis: Use Redis for persistence (production)
+    # - filesystem: Use local JSONL files (local development)
+    # - memory: In-memory only, no persistence (testing)
+    backend: Literal["redis", "filesystem", "memory"] = Field(
+        default="memory",
+        alias="MEMORY_BACKEND",
+    )
+
+    # Redis URL (required when backend=redis)
     redis_url: str | None = Field(default=None, alias="REDIS_URL")
+
+    # Filesystem path (used when backend=filesystem)
+    # Default: ~/.k8sops
+    filesystem_path: str = Field(default="~/.k8sops", alias="MEMORY_FILESYSTEM_PATH")
 
     # Use shallow checkpointer (only stores latest state, not full history)
     # Recommended for production to reduce memory usage
@@ -103,13 +115,28 @@ class MemorySettings(BaseSettings):
 
     @property
     def use_redis(self) -> bool:
-        """Check if Redis is configured."""
-        return self.redis_url is not None
+        """Check if Redis backend is configured."""
+        return self.backend == "redis" and self.redis_url is not None
+
+    @property
+    def use_filesystem(self) -> bool:
+        """Check if filesystem backend is configured."""
+        return self.backend == "filesystem"
+
+    @property
+    def use_persistence(self) -> bool:
+        """Check if any persistence backend is configured."""
+        return self.use_redis or self.use_filesystem
 
     @property
     def use_long_term(self) -> bool:
         """Check if long-term memory is enabled and configured."""
         return self.long_term_enabled and self.use_redis
+
+    def get_filesystem_path(self) -> str:
+        """Get expanded filesystem path."""
+        import os
+        return os.path.expanduser(self.filesystem_path)
 
     def get_embedding_model(self) -> str:
         """Get embedding model with provider-specific defaults."""
