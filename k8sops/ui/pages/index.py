@@ -1,7 +1,9 @@
 """Main chat page."""
 
 import reflex as rx
+
 from ..state import ChatState, BaseState
+from ..styles import WARM_BG_MAIN_LIGHT, DARK_BG_MAIN
 from ..components import (
     message_list,
     input_bar,
@@ -49,20 +51,20 @@ def chat_area() -> rx.Component:
 
 
 def index() -> rx.Component:
-    """Main page layout."""
+    """Main page layout with unified sidebar."""
     return rx.box(
         # Fixed sidebar
         sidebar(),
-        # Toggle button
+        # Toggle button when sidebar is closed
         sidebar_toggle(),
-        # Main content (offset by sidebar width)
+        # Chat area (offset by sidebar when open)
         rx.box(
             chat_area(),
-            margin_left=rx.cond(BaseState.sidebar_open, "240px", "0"),
+            margin_left=rx.cond(BaseState.sidebar_open, "260px", "0"),
             transition="margin-left 0.2s ease",
             height="100vh",
         ),
-        background_color=rx.color("gray", 1),
+        background_color=rx.color_mode_cond(WARM_BG_MAIN_LIGHT, DARK_BG_MAIN),
         color=rx.color("gray", 12),
         min_height="100vh",
         on_mount=ChatState.initialize,

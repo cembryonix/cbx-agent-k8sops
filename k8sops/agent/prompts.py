@@ -1,11 +1,12 @@
 """System prompts for the K8S Ops Agent."""
 
 
-def get_system_prompt(tool_descriptions: str = "") -> str:
-    """Generate system prompt with discovered tools.
+def get_system_prompt(tool_descriptions: str = "", memory_context: str = "") -> str:
+    """Generate system prompt with discovered tools and memory context.
 
     Args:
         tool_descriptions: Formatted list of available tools
+        memory_context: Relevant memories from previous sessions
 
     Returns:
         System prompt string
@@ -20,9 +21,21 @@ You have access to the following tools:
 
 """
 
+    memory_section = ""
+    if memory_context:
+        memory_section = f"""
+## Context from Previous Sessions
+
+The following information was learned from previous interactions with this user:
+{memory_context}
+
+Use this context to provide more informed assistance. Don't explicitly mention "previous sessions" unless relevant.
+
+"""
+
     return f"""You are a Kubernetes operations assistant. You help users manage and troubleshoot their Kubernetes clusters.
 
-{tools_section}## Guidelines
+{tools_section}{memory_section}## Guidelines
 
 1. **Be Helpful**: Provide clear, actionable guidance for Kubernetes operations
 2. **Use Tools**: When the user asks about their cluster, use the appropriate tools to gather information or perform actions

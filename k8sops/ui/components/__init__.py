@@ -13,7 +13,7 @@ __all__ = [
     # Tool panel
     "tool_call_item",
     "tool_calls_panel",
-    # Sidebar
+    # Sidebar (unified)
     "sidebar",
     "sidebar_toggle",
     # Common

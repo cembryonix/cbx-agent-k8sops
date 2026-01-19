@@ -17,6 +17,7 @@ def create_agent(
     model: BaseChatModel,
     tools: list[BaseTool],
     checkpointer: Any | None = None,
+    memory_context: str = "",
 ) -> Any:
     """Create a LangGraph ReAct agent.
 
@@ -24,6 +25,7 @@ def create_agent(
         model: LangChain chat model
         tools: List of LangChain tools
         checkpointer: Optional checkpointer for conversation memory
+        memory_context: Optional context from long-term memory
 
     Returns:
         LangGraph agent instance
@@ -34,7 +36,7 @@ def create_agent(
         for t in tools
     ]
     tool_descriptions = format_tool_descriptions(tool_defs)
-    system_prompt = get_system_prompt(tool_descriptions)
+    system_prompt = get_system_prompt(tool_descriptions, memory_context)
 
     # Use memory saver if no checkpointer provided
     if checkpointer is None:
@@ -57,6 +59,7 @@ async def create_agent_with_mcp(
     model: BaseChatModel,
     mcp_client: Any,
     checkpointer: Any | None = None,
+    memory_context: str = "",
 ) -> Any:
     """Create agent with tools from MCP client.
 
@@ -64,9 +67,10 @@ async def create_agent_with_mcp(
         model: LangChain chat model
         mcp_client: Connected MCPClient instance
         checkpointer: Optional checkpointer for conversation memory
+        memory_context: Optional context from long-term memory
 
     Returns:
         LangGraph agent instance
     """
     tools = mcp_client.get_langchain_tools()
-    return create_agent(model, tools, checkpointer)
+    return create_agent(model, tools, checkpointer, memory_context)
