@@ -2,13 +2,13 @@
 
 import reflex as rx
 
-# Warm background for assistant messages
-WARM_ASSISTANT_BG = "#F0EDE5"
+from ...styles import WARM_ASSISTANT_BG_LIGHT, DARK_ASSISTANT_BG
 
 # Softer blue for user messages (less bright than blue-9)
 USER_MESSAGE_BG = "#5B8DEF"
 
 # Component map for better markdown rendering (especially tables)
+# Uses theme-aware colors via rx.color() for dark/light mode compatibility
 markdown_component_map = {
     "table": lambda *children: rx.box(
         rx.el.table(
@@ -26,14 +26,14 @@ markdown_component_map = {
         text_align="left",
         font_weight="600",
         border_bottom="2px solid",
-        border_color="#D4D0C8",
-        background_color="#F5F2EA",
+        border_color=rx.color("gray", 6),
+        background_color=rx.color("gray", 3),
     ),
     "td": lambda *children: rx.el.td(
         *children,
         padding="8px 12px",
         border_bottom="1px solid",
-        border_color="#E8E4DC",
+        border_color=rx.color("gray", 4),
     ),
     "tr": lambda *children: rx.el.tr(*children),
     "thead": lambda *children: rx.el.thead(*children),
@@ -69,7 +69,7 @@ def message_bubble(message: dict) -> rx.Component:
         background_color=rx.cond(
             message["role"] == "user",
             USER_MESSAGE_BG,
-            WARM_ASSISTANT_BG,
+            rx.color_mode_cond(WARM_ASSISTANT_BG_LIGHT, DARK_ASSISTANT_BG),
         ),
         color=rx.cond(
             message["role"] == "user",

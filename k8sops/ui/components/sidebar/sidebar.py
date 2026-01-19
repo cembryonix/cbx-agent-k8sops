@@ -4,7 +4,7 @@ import reflex as rx
 
 from ...state import ChatState, BaseState, MultiSessionState
 from ...state.settings import SettingsState
-from ...styles import WARM_BG_SIDEBAR
+from ...styles import WARM_BG_SIDEBAR_LIGHT, DARK_BG_SIDEBAR
 
 
 def settings_popover() -> rx.Component:
@@ -410,7 +410,7 @@ def sidebar() -> rx.Component:
             position="fixed",
             left="0",
             top="0",
-            background_color=WARM_BG_SIDEBAR,
+            background_color=rx.color_mode_cond(WARM_BG_SIDEBAR_LIGHT, DARK_BG_SIDEBAR),
             border_right="1px solid",
             border_color=rx.color("gray", 4),
             display="flex",

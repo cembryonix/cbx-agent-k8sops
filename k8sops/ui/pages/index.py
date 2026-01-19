@@ -3,7 +3,7 @@
 import reflex as rx
 
 from ..state import ChatState, BaseState
-from ..styles import WARM_BG_MAIN
+from ..styles import WARM_BG_MAIN_LIGHT, DARK_BG_MAIN
 from ..components import (
     message_list,
     input_bar,
@@ -64,7 +64,7 @@ def index() -> rx.Component:
             transition="margin-left 0.2s ease",
             height="100vh",
         ),
-        background_color=WARM_BG_MAIN,
+        background_color=rx.color_mode_cond(WARM_BG_MAIN_LIGHT, DARK_BG_MAIN),
         color=rx.color("gray", 12),
         min_height="100vh",
         on_mount=ChatState.initialize,
