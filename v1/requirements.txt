@@ -1,7 +1,0 @@
-chainlit==2.9.4
-langchain-core==1.2.5
-langchain-openai==1.1.6
-langgraph==1.0.5
-langchain-mcp-adapters==0.2.1
-toml
-pyyaml
