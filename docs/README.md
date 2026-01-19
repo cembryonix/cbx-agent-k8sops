@@ -206,32 +206,101 @@ MEMORY_SHALLOW=true
 
 ### Memory Configuration
 
-K8SOps supports persistent conversation memory using Redis. This enables:
+K8SOps supports two types of memory using Redis:
+
+1. **Short-term memory** (checkpointer) - Conversation state within a session
+2. **Long-term memory** (store) - Facts and learnings across sessions
+
+#### Short-term Memory
+
+Preserves conversation history within a session:
 - Conversation history preserved across pod restarts
 - Session recovery after unexpected failures
 - Memory sharing across multiple instances (with sticky sessions)
 
-**Options:**
-
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `REDIS_URL` | (none) | Redis connection URL. If not set, uses in-memory storage (lost on restart). |
-| `MEMORY_SHALLOW` | `false` | Use shallow checkpointer that only stores latest state. Recommended for production to reduce memory usage. |
+| `MEMORY_SHALLOW` | `false` | Use shallow checkpointer that only stores latest state. Recommended for production. |
 
-**Examples:**
+#### Long-term Memory
+
+Learns from sessions and retrieves relevant context for future interactions:
+- Extracts key facts about user's environment (clusters, namespaces, preferences)
+- Stores session summaries and successful troubleshooting patterns
+- Retrieves relevant memories via semantic search when starting new sessions
+- Automatically summarizes conversations when approaching context window limit
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MEMORY_LONG_TERM_ENABLED` | `false` | Enable long-term memory (requires `REDIS_URL`). |
+| `EMBEDDING_PROVIDER` | `openai` | Provider for embeddings: `openai` or `ollama`. Note: Anthropic has no embeddings API. |
+| `EMBEDDING_MODEL` | (auto) | Embedding model. Defaults: OpenAI=`text-embedding-3-small`, Ollama=`nomic-embed-text`. |
+| `MEMORY_CONTEXT_THRESHOLD` | `0.75` | Fraction of context window that triggers summarization. |
+| `MEMORY_MAX_CONTEXT_TOKENS` | `100000` | Maximum tokens before summarization. |
+| `MEMORY_MAX_MEMORIES` | `5` | Number of memories to retrieve per search. |
+| `MEMORY_USER_ID` | `default` | User ID for memory namespace (when no auth). |
+
+**Example configuration:**
 
 ```bash
-# Local Redis
+# Redis connection (required for both memory types)
 REDIS_URL=redis://localhost:6379
 
-# Redis with password
-REDIS_URL=redis://:password@redis-host:6379
+# Short-term memory
+MEMORY_SHALLOW=true
 
-# Redis in Kubernetes
-REDIS_URL=redis://redis-service.default.svc.cluster.local:6379
+# Long-term memory
+MEMORY_LONG_TERM_ENABLED=true
+EMBEDDING_PROVIDER=openai
 ```
 
-When `REDIS_URL` is set, the agent uses `RedisSaver` (or `ShallowRedisSaver` if `MEMORY_SHALLOW=true`) from `langgraph-checkpoint-redis`. Without it, the default `MemorySaver` is used (in-memory, not persistent).
+**How it works:**
+
+```
+Session Start:
+  └─→ Retrieve relevant memories from previous sessions
+  └─→ Include in agent's system prompt
+
+During Session:
+  └─→ Monitor token count
+  └─→ If approaching limit: summarize older messages, store summary, continue
+
+Session End:
+  └─→ Extract key facts and learnings
+  └─→ Store as semantic/episodic memories for future retrieval
+```
+
+#### Multi-Session Support
+
+K8SOps supports multiple persistent chat sessions (requires Redis):
+
+- View list of past conversations in a sidebar
+- Switch between conversations
+- Create new conversations
+- Delete old conversations
+- Sessions persist across browser restarts
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_SESSIONS` | `10` | Maximum number of sessions to keep per user. Oldest sessions are auto-deleted when limit is exceeded. |
+
+**How it works:**
+
+```
+┌─────────────────┬──────────────────────────────────────────────┐
+│ Session Sidebar │  Main Chat Area                              │
+├─────────────────│                                              │
+│ [+ New Chat]    │  Messages...                                 │
+│─────────────────│                                              │
+│ > Current chat  │                                              │
+│   Previous chat │                                              │
+│   Older chat    │                                              │
+└─────────────────┴──────────────────────────────────────────────┘
+```
+
+Session metadata (title, timestamps) stored separately from conversation history.
+Auto-generates title from first user message.
 
 ### Run
 

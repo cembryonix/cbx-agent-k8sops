@@ -103,8 +103,12 @@ class AgentSession:
         self._mcp_client: Any = None
         self._agent: Any = None
         self._checkpointer: Any = None  # Preserved across model switches
+        self._memory_manager: Any = None  # Long-term memory
+        self._session_store: Any = None  # Session metadata store
         self._thread_id: str = self.session_id
         self._model_key: str = ""
+        self._model: Any = None  # LLM model reference for memory operations
+        self._title_set: bool = False  # Track if title has been set from first message
 
         # Status
         self.mcp_connected: bool = False
@@ -123,15 +127,31 @@ class AgentSession:
 
         try:
             await self._connect_mcp()
-            await self._create_agent()
+            is_resuming = await self._init_session_store()
+            await self._init_memory_manager()
 
-            self.messages = [
-                Message(
-                    role="assistant",
-                    content="Connected to K8S MCP server. Ready to help with your cluster!",
-                )
-            ]
-            logger.info(f"Session {self.session_id[:8]}... initialized")
+            # Retrieve relevant memories for agent context
+            memories = await self._get_memory_context()
+            memory_context = ""
+            if memories and self._memory_manager:
+                memory_context = self._memory_manager.format_memories_for_context(memories)
+
+            await self._create_agent(memory_context=memory_context)
+
+            # Restore conversation history if resuming existing session
+            if is_resuming:
+                restored = await self._restore_messages_from_checkpointer()
+                if restored:
+                    self._title_set = True  # Title already set for existing session
+                    logger.info(f"Session {self.session_id[:8]}... resumed with history")
+                else:
+                    # Checkpointer had no messages, treat as new
+                    self._set_welcome_message(memories)
+                    logger.info(f"Session {self.session_id[:8]}... initialized (no history found)")
+            else:
+                # New session - show welcome message
+                self._set_welcome_message(memories)
+                logger.info(f"Session {self.session_id[:8]}... initialized")
 
         except Exception as e:
             logger.exception("Failed to initialize session")
@@ -142,6 +162,13 @@ class AgentSession:
 
         finally:
             self.is_processing = False
+
+    def _set_welcome_message(self, memories: list[dict] | None = None) -> None:
+        """Set the welcome message for a new session."""
+        welcome_msg = "Connected to K8S MCP server. Ready to help with your cluster!"
+        if memories:
+            welcome_msg += f"\n\n[Retrieved {len(memories)} relevant memories from previous sessions]"
+        self.messages = [Message(role="assistant", content=welcome_msg)]
 
     async def _connect_mcp(self) -> None:
         """Connect to MCP server."""
@@ -158,26 +185,74 @@ class AgentSession:
         self.mcp_connected = True
         logger.info(f"Connected to MCP, found {len(tools)} tools")
 
-    async def _create_agent(self) -> None:
-        """Create LangGraph agent with current settings.
+    async def _init_session_store(self) -> bool:
+        """Initialize session store for metadata tracking.
 
-        Preserves the checkpointer across model switches to maintain
-        conversation history.
+        Returns:
+            True if resuming an existing session, False if new session.
         """
-        from k8sops.models import create_model
-        from k8sops.agent import create_agent_with_mcp
+        from k8sops.config import get_memory_settings, get_app_settings
+        from k8sops.session.store import SessionStore
 
-        model = create_model(
+        memory_settings = get_memory_settings()
+        app_settings = get_app_settings()
+
+        if not memory_settings.use_redis:
+            logger.debug("Redis not configured, session store disabled")
+            return False
+
+        self._session_store = SessionStore(
+            redis_url=memory_settings.redis_url,
+            user_id=memory_settings.user_id,
+        )
+
+        # Check if session exists (resuming) or create new
+        if await self._session_store.session_exists(self.session_id):
+            logger.info(f"Resuming existing session {self.session_id[:8]}...")
+            # Update timestamp on resume
+            await self._session_store.update_session(self.session_id)
+            return True
+        else:
+            # Create new session
+            await self._session_store.create_session(self.session_id)
+            # Enforce session limit
+            await self._session_store.enforce_session_limit(app_settings.max_sessions)
+            logger.info(f"Created new session {self.session_id[:8]}...")
+            return False
+
+    def _create_model(self) -> None:
+        """Create the LLM model if not already created."""
+        if self._model is not None:
+            return
+
+        from k8sops.models import create_model
+
+        self._model = create_model(
             provider=self.settings.provider,
             model_name=self.settings.model_name,
             temperature=self.settings.temperature,
         )
 
+    async def _create_agent(self, memory_context: str = "") -> None:
+        """Create LangGraph agent with current settings.
+
+        Preserves the checkpointer across model switches to maintain
+        conversation history.
+
+        Args:
+            memory_context: Optional context from long-term memory.
+        """
+        from k8sops.agent import create_agent_with_mcp
+
+        self._create_model()
+
         # Create checkpointer once, reuse across model switches
         if self._checkpointer is None:
             self._checkpointer = await self._create_checkpointer()
 
-        self._agent = await create_agent_with_mcp(model, self._mcp_client, self._checkpointer)
+        self._agent = await create_agent_with_mcp(
+            self._model, self._mcp_client, self._checkpointer, memory_context
+        )
         self._model_key = self.settings.model_key()
         self.agent_ready = True
         logger.info(f"Created agent with {self.settings.provider}/{self.settings.model_name}")
@@ -209,6 +284,121 @@ class AgentSession:
 
             logger.info("Using in-memory checkpointer (not persistent)")
             return MemorySaver()
+
+    async def _restore_messages_from_checkpointer(self) -> bool:
+        """Restore conversation messages from the checkpointer.
+
+        Returns:
+            True if messages were restored, False otherwise.
+        """
+        if not self._checkpointer:
+            return False
+
+        try:
+            config = {"configurable": {"thread_id": self._thread_id}}
+            checkpoint_tuple = await self._checkpointer.aget_tuple(config)
+
+            if checkpoint_tuple and checkpoint_tuple.checkpoint:
+                channel_values = checkpoint_tuple.checkpoint.get("channel_values", {})
+                stored_messages = channel_values.get("messages", [])
+
+                if stored_messages:
+                    self.messages = []
+                    for msg in stored_messages:
+                        # Handle different message formats
+                        if hasattr(msg, "type") and hasattr(msg, "content"):
+                            role = "assistant" if msg.type == "ai" else msg.type
+                            if role in ("human", "user"):
+                                role = "user"
+                            # Skip system messages and tool messages
+                            if role in ("user", "assistant"):
+                                content = msg.content
+                                # Handle content that might be a list
+                                if isinstance(content, list):
+                                    content = "".join(
+                                        block.get("text", "") if isinstance(block, dict) else str(block)
+                                        for block in content
+                                    )
+                                if content:  # Only add non-empty messages
+                                    self.messages.append(Message(role=role, content=content))
+
+                    if self.messages:
+                        logger.info(f"Restored {len(self.messages)} messages from checkpointer")
+                        return True
+
+        except Exception as e:
+            logger.warning(f"Failed to restore messages from checkpointer: {e}")
+
+        return False
+
+    async def _init_memory_manager(self) -> None:
+        """Initialize long-term memory manager if enabled."""
+        from k8sops.config import get_memory_settings
+
+        memory_settings = get_memory_settings()
+
+        if memory_settings.use_long_term:
+            from k8sops.memory import MemoryManager
+
+            # Ensure model is created for memory operations
+            self._create_model()
+
+            self._memory_manager = MemoryManager(
+                session_id=self.session_id,
+                settings=memory_settings,
+                llm=self._model,
+            )
+            await self._memory_manager.initialize()
+            logger.info("Long-term memory manager initialized")
+
+    async def _get_memory_context(self) -> list[dict]:
+        """Retrieve relevant memories for session context."""
+        if not self._memory_manager:
+            return []
+
+        try:
+            memories = await self._memory_manager.retrieve_relevant_memories(
+                query="kubernetes troubleshooting cluster operations"
+            )
+            return memories
+        except Exception as e:
+            logger.warning(f"Failed to retrieve memories: {e}")
+            return []
+
+    async def _check_context_limit(self) -> bool:
+        """Check and handle context window limit.
+
+        Returns:
+            True if summarization occurred.
+        """
+        if not self._memory_manager:
+            return False
+
+        if self._memory_manager.should_summarize(self.messages):
+            self.messages, summary = await self._memory_manager.summarize_and_trim(
+                self.messages
+            )
+            logger.info("Conversation summarized to manage context window")
+            return True
+
+        return False
+
+    async def _maybe_extract_memories(self) -> None:
+        """Periodically extract and store memories during session.
+
+        Called after each assistant response to ensure memories are stored
+        even if session cleanup isn't triggered (e.g., browser tab close).
+        """
+        if not self._memory_manager:
+            return
+
+        try:
+            if self._memory_manager.should_extract(self.messages):
+                memories = await self._memory_manager.extract_incremental(self.messages)
+                if memories:
+                    logger.info(f"Stored {len(memories)} memories during session")
+        except Exception as e:
+            logger.warning(f"Failed to extract memories during session: {e}")
 
     async def update_settings(self, **kwargs) -> bool:
         """Update session settings and reinitialize agent if needed.
@@ -258,10 +448,22 @@ class AgentSession:
             yield {"type": "error", "message": "Agent not ready. Please wait for initialization."}
             return
 
+        # Check context window limit before processing
+        if await self._check_context_limit():
+            yield {"type": "system", "content": "Conversation summarized to manage context."}
+
         # Add user message
         user_message = Message(role="user", content=content.strip())
         self.messages.append(user_message)
         yield {"type": "user_message", "content": user_message.content}
+
+        # Set session title from first user message
+        if not self._title_set and self._session_store:
+            title = content.strip()[:50]
+            if len(content.strip()) > 50:
+                title += "..."
+            await self._session_store.update_session(self.session_id, title=title)
+            self._title_set = True
 
         self.is_streaming = True
         self.is_processing = True
@@ -316,6 +518,17 @@ class AgentSession:
             self.messages.append(Message(role="assistant", content=assistant_content))
             yield {"type": "assistant_message", "content": assistant_content}
 
+            # Update session metadata (preview and message count)
+            if self._session_store:
+                await self._session_store.update_session(
+                    self.session_id,
+                    preview=assistant_content[:100] if assistant_content else "",
+                    message_count=len(self.messages),
+                )
+
+            # Periodically extract memories during session
+            await self._maybe_extract_memories()
+
         except Exception as e:
             logger.exception("Error during message processing")
             error_msg = f"Error: {str(e)}"
@@ -349,14 +562,31 @@ class AgentSession:
 
     async def cleanup(self) -> None:
         """Cleanup session resources."""
+        # Extract any remaining unextracted memories before cleanup
+        if self._memory_manager and self.messages:
+            try:
+                memories = await self._memory_manager.extract_remaining(self.messages)
+                if memories:
+                    logger.info(f"Extracted {len(memories)} remaining memories at cleanup")
+            except Exception as e:
+                logger.error(f"Failed to extract session memories: {e}")
+
         if self._mcp_client:
             try:
                 await self._mcp_client.disconnect()
             except Exception as e:
                 logger.error(f"Error disconnecting MCP client: {e}")
 
+        if self._session_store:
+            try:
+                await self._session_store.close()
+            except Exception as e:
+                logger.error(f"Error closing session store: {e}")
+
         self._mcp_client = None
         self._agent = None
+        self._memory_manager = None
+        self._session_store = None
         self.mcp_connected = False
         self.agent_ready = False
         logger.info(f"Session {self.session_id[:8]}... cleaned up")

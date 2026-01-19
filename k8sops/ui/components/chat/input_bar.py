@@ -2,6 +2,7 @@
 
 import reflex as rx
 from ...state import ChatState
+from ...styles import WARM_BG_MAIN
 
 
 def input_bar() -> rx.Component:
@@ -47,12 +48,12 @@ def input_bar() -> rx.Component:
                 width="100%",
             ),
             width="100%",
-            max_width="700px",
+            max_width="900px",
             margin="0 auto",
         ),
         width="100%",
-        padding="1rem 1.5rem",
+        padding="1rem 48px",
         border_top="1px solid",
         border_color=rx.color("gray", 4),
-        background_color=rx.color("gray", 1),
+        background_color=WARM_BG_MAIN,
     )

@@ -34,6 +34,9 @@ class ChatState(rx.State):
     messages: list[Message] = []
     current_input: str = ""
 
+    # Multi-session support
+    _current_session_id: str = ""
+
     # Streaming state
     is_streaming: bool = False
     is_processing: bool = False
@@ -75,8 +78,18 @@ class ChatState(rx.State):
 
     def _get_session(self):
         """Get AgentSession for current UI session."""
-        token = self.router.session.client_token
-        return session_manager.get_session(token)
+        # Use current_session_id if set, otherwise fall back to browser token
+        session_id = getattr(self, '_current_session_id', None)
+        if not session_id:
+            session_id = self.router.session.client_token
+        return session_manager.get_session(session_id)
+
+    def _get_session_id(self) -> str:
+        """Get current session ID."""
+        session_id = getattr(self, '_current_session_id', None)
+        if not session_id:
+            session_id = self.router.session.client_token
+        return session_id
 
     def _sync_from_session(self, session):
         """Sync Reflex state from AgentSession."""
@@ -267,6 +280,71 @@ class ChatState(rx.State):
         self.messages = []
         self.tool_calls = []
         self.error_message = ""
+
+    async def switch_to_session(self, session_id: str):
+        """Switch to a different session.
+
+        Args:
+            session_id: ID of session to switch to.
+        """
+        from k8sops.session import AgentSession
+
+        # Update current session ID
+        self._current_session_id = session_id
+
+        # Clear current UI state
+        self.messages = []
+        self.tool_calls = []
+        self.error_message = ""
+        self.is_processing = True
+        yield
+
+        try:
+            # Check if session exists in manager
+            session = session_manager.get_session(session_id)
+
+            if session and session.agent_ready:
+                # Existing session - sync state
+                self._sync_from_session(session)
+            else:
+                # New or unloaded session - initialize
+                session = AgentSession(session_id=session_id)
+                await session.initialize()
+                session_manager.set_session(session_id, session)
+                self._sync_from_session(session)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.error_message = f"Failed to switch session: {str(e)}"
+            self.agent_ready = False
+
+        finally:
+            self.is_processing = False
+            yield
+
+    def save_history(self):
+        """Save chat history as downloadable JSON file."""
+        import json
+        from datetime import datetime
+
+        if not self.messages:
+            return
+
+        # Create history data
+        history = {
+            "session_id": self._get_session_id(),
+            "exported_at": datetime.now().isoformat(),
+            "messages": self.messages,
+            "tool_calls": self.tool_calls,
+        }
+
+        # Create JSON content
+        content = json.dumps(history, indent=2)
+
+        # Trigger browser download
+        filename = f"k8sops-chat-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+        return rx.download(data=content, filename=filename)
 
 
 # Import here to avoid circular import
