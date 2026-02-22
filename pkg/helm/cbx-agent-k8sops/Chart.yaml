@@ -1,0 +1,21 @@
+apiVersion: v2
+name: cbx-agent-k8sops
+description: CBX K8SOps Agent - AI-powered Kubernetes operations assistant
+
+type: application
+
+# Chart version
+version: 0.1.0
+
+# Application version
+appVersion: "0.2.2"
+
+maintainers:
+  - name: cembryonix
+
+keywords:
+  - k8sops
+  - kubernetes
+  - ai-agent
+  - langgraph
+  - reflex

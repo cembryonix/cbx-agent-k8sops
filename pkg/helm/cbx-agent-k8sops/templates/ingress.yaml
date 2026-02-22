@@ -1,0 +1,68 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "cbx-agent-k8sops.fullname" . }}
+  labels:
+    {{- include "cbx-agent-k8sops.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.stickySession.enabled }}
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/affinity-mode: "persistent"
+    nginx.ingress.kubernetes.io/session-cookie-name: {{ .Values.stickySession.cookieName | quote }}
+    nginx.ingress.kubernetes.io/session-cookie-expires: {{ .Values.stickySession.cookieExpires | quote }}
+    nginx.ingress.kubernetes.io/session-cookie-max-age: {{ .Values.stickySession.cookieExpires | quote }}
+    nginx.ingress.kubernetes.io/session-cookie-change-on-failure: "true"
+    {{- end }}
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- toYaml .Values.ingress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          # Reflex backend: WebSocket events and API
+          - path: /_event
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.service.name | default (include "cbx-agent-k8sops.fullname" .) }}
+                port:
+                  number: {{ .Values.service.backendPort }}
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.service.name | default (include "cbx-agent-k8sops.fullname" .) }}
+                port:
+                  number: {{ .Values.service.backendPort }}
+          - path: /ping
+            pathType: Exact
+            backend:
+              service:
+                name: {{ .Values.service.name | default (include "cbx-agent-k8sops.fullname" .) }}
+                port:
+                  number: {{ .Values.service.backendPort }}
+          # Reflex frontend: static assets and pages
+          - path: {{ .Values.ingress.path }}
+            pathType: {{ .Values.ingress.pathType }}
+            backend:
+              service:
+                name: {{ .Values.service.name | default (include "cbx-agent-k8sops.fullname" .) }}
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}
