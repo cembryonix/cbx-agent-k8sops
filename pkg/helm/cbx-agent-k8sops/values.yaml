@@ -1,0 +1,149 @@
+# values.yaml for cbx-agent-k8sops
+
+image:
+  repository: ghcr.io/cembryonix/cbx-agent-k8sops
+  tag: "0.2.2"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  name: ""  # defaults to fullname via helper
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+  # Reflex backend (WebSocket + API) - needed for ingress path routing
+  backendPort: 8000
+  backendTargetPort: 8000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  host: k8sops.yourdomain.com  # Change this to your domain
+  path: /
+  pathType: Prefix
+  tls: []
+  #  - secretName: k8sops-tls
+  #    hosts:
+  #      - k8sops.yourdomain.com
+
+# Sticky session settings for WebSocket support (multi-pod)
+stickySession:
+  enabled: true
+  cookieName: K8SOPS_AFFINITY
+  cookieExpires: "3600"
+
+# Secret references - these secrets must exist before deployment
+# Create with:
+#   kubectl create secret generic cbx-agent-k8sops-api-keys \
+#     --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
+#     --from-literal=OPENAI_API_KEY=sk-...
+secretReferences:
+  apiKeys:
+    secretName: "cbx-agent-k8sops-api-keys"
+
+# Application configuration (non-sensitive, injected as env vars via ConfigMap)
+config:
+  # LLM settings
+  LLM_PROVIDER: "anthropic"
+  LLM_MODEL: "claude-sonnet-4-5-20250929"
+  LLM_TEMPERATURE: "0.0"
+
+  # MCP settings
+  MCP_TRANSPORT: "http"
+  MCP_SERVER_URL: ""          # REQUIRED: set to your MCP server endpoint
+  MCP_SSL_VERIFY: "true"
+
+  # Memory / persistence (redis-only)
+  MEMORY_BACKEND: "redis"
+  MEMORY_SHALLOW: "true"
+  # NOTE: REDIS_URL should be provided via extraEnv with secretKeyRef (contains password)
+
+  # Reflex backend URL (must match external ingress URL so browser connects via ingress)
+  # REQUIRED: set to your external URL (e.g., http://k8sops.yourdomain.com)
+  API_URL: ""
+
+  # Application
+  LOG_LEVEL: "INFO"
+  MAX_SESSIONS: "10"
+
+# Optional configuration (uncomment to enable)
+# optionalConfig:
+#   MEMORY_LONG_TERM_ENABLED: "true"
+#   EMBEDDING_PROVIDER: "openai"
+#   EMBEDDING_MODEL: "text-embedding-3-small"
+#   OLLAMA_BASE_URL: "http://ollama:11434"
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Probes
+probes:
+  startup:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 30    # 30 * 5s = 150s max startup
+  liveness:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Security context for the pod
+podSecurityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  runAsNonRoot: true
+
+# Security context for the container
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Extra environment variables (list format)
+# IMPORTANT: REDIS_URL must be provided here via a secret reference
+# Example:
+# extraEnv:
+#   - name: REDIS_URL
+#     valueFrom:
+#       secretKeyRef:
+#         name: my-redis-secret
+#         key: REDIS_URL
+#   - name: OLLAMA_BASE_URL
+#     value: "http://ollama:11434"
+extraEnv: []
+
+# Extra envFrom sources (ConfigMaps or Secrets)
+# Example:
+# extraEnvFrom:
+#   - secretRef:
+#       name: additional-secrets
+extraEnvFrom: []

@@ -4,6 +4,7 @@ set -e
 # K8SOps Agent - Docker Build Script
 
 publish_build=false
+no_cache=""
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load configuration
@@ -39,8 +40,13 @@ while [[ $# -gt 0 ]]; do
             publish_build=true
             shift
             ;;
+        --no-cache)
+            no_cache="--no-cache"
+            shift
+            ;;
         *)
             echo "Unknown argument: $1"
+            echo "Usage: build.sh [--no-cache] [publish]"
             exit 1
             ;;
     esac
@@ -88,7 +94,7 @@ if [ "$publish_build" = true ]; then
     echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${gh_username}" --password-stdin
 
     echo "Building and pushing multi-arch image..."
-    docker buildx build --platform linux/amd64,linux/arm64 \
+    docker buildx build ${no_cache} --platform linux/amd64,linux/arm64 \
         -f "${script_dir}/Dockerfile" \
         -t "ghcr.io/${gh_repo_owner}/${docker_image_name}:${release_tag}" \
         --push \
@@ -97,7 +103,7 @@ else
     local_platform="$(detect_local_platform)"
     echo "Building local image..."
     echo "Platform: ${local_platform}"
-    docker buildx build \
+    docker buildx build ${no_cache} \
         --platform "${local_platform}" \
         -f "${script_dir}/Dockerfile" \
         -t "${docker_image_name}:${local_tag}" \
